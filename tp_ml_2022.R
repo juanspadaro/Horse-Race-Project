@@ -302,107 +302,55 @@ sum(return.logit)/nbets.logit  # Retorno sobre el total invertido (7.7%)
 
 
 
-
-
+       
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~ 3.2) Regresión logística con regularizacion ####
+# ~~~~~~~~~~~~~~~~~~~~~~~~ Dividimos los datos ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+# Apartamos un conjunto de testeo (15%)
+set.seed(123)
 
+train_cutoff <- as.integer(nrow(raceruns)*0.85)
+train_set <- raceruns[1:train_cutoff,]
+test_set <- raceruns[(train_cutoff+1):nrow(raceruns),]
+       
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~ 3.3) Regresión logística ####
+# ~~ 3.5) XGBoost ####
 
-add_poly <- function(X, degrees) {
-  lapply(degrees, function(degree) {
-    X <- X[, sapply(X, is.numeric)]
-    X <- apply(X, 2, function(x) x^degree) %>% as.data.frame()
-    return(X)
-  }) %>% bind_cols()
-}
+cv <- trainControl(method = "cv",
+                   number = 5,
+                   classProbs = TRUE,
+                   verboseIter = TRUE,
+                   summaryFunction = twoClassSummary)
 
-train_poly <- cbind(train, add_poly(train, 2:6))
-test_poly <- cbind(test, add_poly(test, 2:6))
+tune_grid <- expand.grid(nrounds = seq(from = 1, to = 5, by = 1),
+                         eta = c(0.01, 0.025, 0.05, 0.1, 0.3, 0.4),
+                         max_depth = 4:8,
+                         gamma = c(0, 0.05, 0.1, 0.5, 0.7, 0.9, 1.0),
+                         colsample_bytree = c(0.4, 0.6, 0.8, 1.0),
+                         min_child_weight = 1:6,
+                         subsample = c(0.5, 0.75, 1.0)) %>% sample_n(30)
 
-X_train_mat <- model.matrix(~.-1, train_poly %>% select(-won))
-X_test_mat <- model.matrix(~.-1, test_poly %>% select(-won))
+#Solo tomo algunas de las variables del data set.
+train_set <- train_set[,c(1,5,7:10,12:14,34,35,41:45,74:77)]
+test_set  <- test_set[,c(1,5,7:10,12:14,34,35,41:45,74:77)]
+sum(is.na(train_set))
+sum(is.na(test_set))
+# eliminamos los datos faltantes debido a que no son representativos según la exploración de datos realizada
+train_set <- na.omit(train_set) 
+test_set <- na.omit(test_set)
 
-lasso_cv <- cv.glmnet(X_train_mat, y_train, family = binomial, alpha = 1)
-best_lambda <- lasso_cv$lambda.min
-best_lambda
-plot(lasso_cv)
+xgb <- train(won ~ ., 
+             data = train_set %>% mutate(won = ifelse(won == 0, "No", "Yes")), 
+             method = "xgbTree", 
+             trControl = cv,
+             tuneGrid = tune_grid,
+             metric = "ROC")
 
-lasso_reg <- glmnet(X_train_mat,
-                    y_train,
-                    alpha = 1,
-                    lambda = best_lambda,
-                    family = "binomial")
-coef(lasso_reg)
-
-## Performance
-preds <- predict(lasso_reg,
-                 s = best_lambda,
-                 newx = X_test_mat,
-                 type = "response")[,1]
+#saveRDS(xgb, "C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/xgb.RDS")
+#xgb <- readRDS("C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/xgb.RDS")
 
 # Matriz de confusión y accuracy
-conf_matrix <- table(y_test, y_pred = round(y_pred,0))
-metricas(conf_matrix)
-
-# Área bajo la curva de ROC
-roc(y_test ~ preds, plot = TRUE, print.auc = TRUE)
-
-ggplot(data = data.frame(Churn = ifelse(y_test == 1, "Sí", "No"), y_hat = preds)) +
-  geom_density(aes(x = y_hat, fill = Churn), alpha =  0.8) +
-  theme_minimal() + 
-  scale_fill_manual(values = c("#73777B", "#EC994B")) +
-  theme(legend.position = "bottom", plot.title = element_text(face = "bold")) +
-  labs(x = "Probabilidad predicha",
-       y = "Densidad",
-       title = "Distribución de las predicciones") +
-  xlim(0,1)
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Umbral Óptimo ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-costs = matrix(c(0, 4400, 510, 3435), nrow = 2)
-
-cutoffs <- seq(0, 1, 0.01)
-total_costs <- c()
-for(cutoff in cutoffs) {
-  y_pred <- factor(ifelse(preds < cutoff, 0, 1), levels = c(0, 1))
-  conf_matrix <- prop.table(table(y_test, y_pred))
-  total_costs <- c(total_costs, sum(costs * conf_matrix))
-}
-
-plot(cutoffs, total_costs, type = 'l',
-     xlab = "Umbral de corte",
-     ylab = "Costo total",
-     main = "Costo total según umbral de corte")
-optimal_cutoff <- cutoffs[which.min(total_costs)]
-abline(v = optimal_cutoff, col = "red", lty = 2)
-
-y_pred <- ifelse(preds < optimal_cutoff, 0, 1)
-conf_matrix <- table(y_test, y_pred)
-metricas(conf_matrix)
-
-min(total_costs)
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~ 3.4) Random Forest ####
-
-oob <- trainControl(method = "oob",
-                    classProbs = TRUE,
-                    verboseIter = TRUE)
-grid <- data.frame(mtry = seq(2, 16, 2))
-rf <- train(won ~ ., 
-            data = train_set %>% mutate(won = ifelse(won == 0, "No", "Yes")), 
-            method = "rf", 
-            trControl = oob,
-            tuneGrid = grid,
-            metric = "Accuracy")
-
-# rf <- readRDS("rf.RDS")
-
-# Matriz de confusión y accuracy
-y_pred <- predict(rf, test_set %>% select(-won), type = "prob")[, 2]
+y_pred <- predict(xgb, test_set %>% select(-won), type = "prob")[, 2]
 y_test <- test_set$won
 conf_matrix <- table(y_test, y_pred = round(y_pred,0))
 metricas(conf_matrix)
@@ -410,8 +358,8 @@ metricas(conf_matrix)
 # Área bajo la curva de ROC
 roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~ 3.5) XGBoost ####
+plot_classes(y_test, y_pred)
+
 
 
 
