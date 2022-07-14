@@ -303,6 +303,14 @@ sum(return.logit)/nbets.logit  # Retorno sobre el total invertido (7.7%)
 
 
        
+       
+ #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+ #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#     
+ #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# Estos modelos corren pero hay que mejorarlos  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+ #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#      
+ #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#      
+       
+       
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~ Dividimos los datos ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -312,7 +320,37 @@ set.seed(123)
 train_cutoff <- as.integer(nrow(raceruns)*0.85)
 train_set <- raceruns[1:train_cutoff,]
 test_set <- raceruns[(train_cutoff+1):nrow(raceruns),]
-       
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~ 3.4) Random Forest ####
+
+oob <- trainControl(method = "oob",
+                    classProbs = TRUE,
+                    verboseIter = TRUE)
+
+grid <- data.frame(mtry = seq(1, 3, 1))
+
+rf <- train(won ~ ., 
+            data = train_set %>% mutate(won = ifelse(won == 0, "No", "Yes")), 
+            method = "rf", 
+            trControl = oob,
+            tuneGrid = grid,
+            metric = "Accuracy")
+
+#saveRDS(rf, "C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/rf.RDS")
+#rf <- readRDS("C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/rf.RDS")
+
+
+# Matriz de confusión y accuracy
+y_pred <- predict(rf, test_set %>% select(-won), type = "prob")[, 2]
+y_test <- test_set$won
+conf_matrix <- table(y_test, y_pred = round(y_pred,0))
+metricas(conf_matrix)
+
+# Área bajo la curva de ROC
+roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
+
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~ 3.5) XGBoost ####
 
