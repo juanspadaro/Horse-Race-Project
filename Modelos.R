@@ -27,6 +27,7 @@ library(rpart)
 library(ggthemes)
 library(dplyr)
 library(rpart.plot)
+library(pROC)
 
 # Para visualizar graficos posteriormente
 theme_set(theme_bw()) # fondo blanco
@@ -319,9 +320,14 @@ X_train <- train_set %>% select(-won)
 X_val <- val_set %>% select(-won)
 X_test <- test_set %>% select(-won)
 
+prueba <- function(vect) {
+  sapply(vect, function(x) ifelse(x == 1, 1 ,0))
+}
+
 y_train <- train_set %>% select(won)
-y_val <- val_set %>% select(won)
-y_test <- test_set %>% select(won)
+y_val <- val_set %>% select(won)%>% prueba()
+y_test <- test_set %>% select(won) %>% prueba()
+
 
 #train.id = which(X[,1]<3001) # primeras 3000 carreras de train y Ãºtimas 3128 de test.
 
@@ -330,9 +336,11 @@ tree <- rpart(won ~ ., data = train_set)
 rpart.plot(tree)
 
 # Matriz de confusión y accuracy
-y_pred <- predict(tree, X_test)[,2]
-conf_matrix <- table(y_test, y_pred = round(y_pred,0))
+y_pred <- predict(tree, X_val)[,2]
+conf_matrix <- table(y_val, y_pred = round(y_pred,0))
 metricas(conf_matrix)
+
+table(y_pred, y_val)
 
 # Área bajo la curva de ROC
 roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
