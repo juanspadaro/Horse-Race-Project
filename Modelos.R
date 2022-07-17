@@ -3,16 +3,16 @@
 rm(list = ls()) # Borra todo el ambiente de trabajo.
 
 #cambio el directorio sobre el que voy a trabajar
-#setwd('C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/')
+setwd('C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/')
 #setwd('C:/AAMIM/Machine learning/TP FINAL')
-setwd('/Users/victoriasosa/Documents/MiM/2. Machine Learning/tp/Horse race data TP2022')
+#setwd('/Users/victoriasosa/Documents/MiM/2. Machine Learning/tp/Horse race data TP2022')
 
 getwd()
 
 #Importamos las funciones que tenemos en un script aparte
-#source("C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/TP_ML_2022_FUNCIONES.R")
+source("C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/TP_ML_2022_FUNCIONES.R")
 #source("C:/AAMIM/Machine learning/TP FINAL/functions.R")
-source('/Users/victoriasosa/Documents/MiM/2. Machine Learning/tp/functions.R')
+#source('/Users/victoriasosa/Documents/MiM/2. Machine Learning/tp/functions.R')
 
 
 # Librerias ####
@@ -72,23 +72,14 @@ table(raceruns$config); prop.table(table(raceruns$config))
 table(raceruns$surface); prop.table(table(raceruns$surface)) # el 89% corre en turf(césped)
 # y el 11% en dirt (tierra)
 table(raceruns$distance); prop.table(table(raceruns$distance))
-
 table(raceruns$going); prop.table(table(raceruns$going))
-
 table(raceruns$horse_ratings); prop.table(table(raceruns$horse_ratings))
-
 table(raceruns$race_class); prop.table(table(raceruns$race_class))
-
 table(raceruns$place_combination1); prop.table(table(raceruns$place_combination1))
-
 table(raceruns$place_combination2); prop.table(table(raceruns$place_combination2))
-
 table(raceruns$place_combination3); prop.table(table(raceruns$place_combination3))
-
 table(raceruns$place_combination4); prop.table(table(raceruns$place_combination4))
-
 table(raceruns$won); prop.table(table(raceruns$won))
-
 
 caballos_ganadores_segun_venue <- raceruns %>%
   filter(won == 1) %>%
@@ -190,7 +181,7 @@ raceruns$year_week <- as.integer(strftime(raceruns$date, format = "%W", tz = "UT
 
 # Agregamos el feature tiempo promedio [(time1+time2+time3)/3]
 #raceruns <- raceruns%>%
- # mutate(mean_time=(time1.x+time2.x+time3.x)/3)
+# mutate(mean_time=(time1.x+time2.x+time3.x)/3)
 
 # Agregamos algunas comparaciones relativas
 table(raceruns$horse_age)
@@ -297,11 +288,11 @@ raceruns[,variables_factor] <- lapply(raceruns[,variables_factor], as.factor)
 # ~~~~~~~~~~~~~~~~~~~~~~~~ Dividimos los datos ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #Solo tomo algunas de las variables del data set.
-X = raceruns
+#X = raceruns
 
-race_id = unique(X[,1])
+#race_id = unique(X[,1])
 
-X = model.matrix(~.,data = X)[ , -1]
+#X = model.matrix(~.,data = X)[ , -1]
 
 ##~~~~~~~~~~~~~ Identificamos training, validation y testing ~~~~~~~~~~~~~
 raceruns$train_val_test <- ifelse(raceruns$date >= strptime("2004-01-05", format = "%Y-%m-%d", tz = "UTC"), "test", "train")
@@ -310,6 +301,22 @@ raceruns[(which(raceruns$train_val_test == "train" & raceruns$date >= strptime("
 
 prop.table(table(raceruns$train_val_test))
 
+
+#variables <- c("won", "train_val_test", "horse_age", "horse_country", "horse_gear", "declared_weight", 
+#               "actual_weight", "draw", "win_odds", "place_odds", "jockey_id", "trainer_id", "venue", 
+#               "race_no", "config", "surface", "distance", "going", "prize", "race_class", "weight_ratio",
+#                  "max.age", "min.age", "n_compet", "ratings_group")
+
+#variables <- c("won", "train_val_test", "horse_gear", 
+#               "venue", "surface", "ratings_group")
+
+#raceruns <- raceruns %>% select(variables)
+
+variables_spoiler <- c(-result, -position_sec3, -race_id, -horse_no, -horse_id, -position_sec1, -position_sec2,-behind_sec1,-behind_sec2,-behind_sec3,-time1.x,
+                       -time2.x,-time3.x,-time1.y,-time2.y,-time3.y,-finish_time,-sec_time1,-sec_time2,-sec_time3,-place_combination1,-place_combination2,-place_combination3,-place_dividend1,-place_dividend2,-place_dividend3,
+                       -win_combination1,-win_dividend1)
+
+raceruns <- raceruns %>% select(variables_spoiler)
 
 train_set <- raceruns %>% filter(train_val_test== "train") %>% select(-train_val_test)
 val_set <- raceruns %>% filter(train_val_test== "valid") %>% select(-train_val_test)
@@ -324,7 +331,7 @@ prueba <- function(vect) {
   sapply(vect, function(x) ifelse(x == 1, 1 ,0))
 }
 
-y_train <- train_set %>% select(won)
+y_train <- train_set %>% select(won) %>% prueba()
 y_val <- val_set %>% select(won)%>% prueba()
 y_test <- test_set %>% select(won) %>% prueba()
 
@@ -332,7 +339,8 @@ y_test <- test_set %>% select(won) %>% prueba()
 #train.id = which(X[,1]<3001) # primeras 3000 carreras de train y Ãºtimas 3128 de test.
 
 ####Modelo Baselin
-tree <- rpart(won ~ ., data = train_set)
+str(train_set)
+tree <- rpart(won ~., data = train_set)
 rpart.plot(tree)
 
 # Matriz de confusión y accuracy
@@ -349,26 +357,17 @@ roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~ 3.2) Regresión logística ####
 
-# Vamos a fitear un modelo logÃ­stico basico.
-#
+logit_reg <- glm(won ~ ., data = train_set, family = binomial)
+summary(logit_reg)
 
-######## RegresiÃ³n logÃ­stica SIN regularizaciÃ³n:
+y_pred <- predict(logit_reg, X_test, type = "response")
 
-logit = glmnet( x=data.matrix(X[,-2]), #attributes(X) # Columna 2 es variable "won"
-                y = as.matrix(X[, 2]), 
-                family  = 'binomial',
-                subset  = train.id,
-                lambda = 0,  
-                alpha = 1)
+# Matriz de confusión y accuracy
+conf_matrix <- table(y_test, y_pred = round(y_pred, 0))
+metricas(conf_matrix)
 
-pred <- predict(logit, s = 0 , newx = X[,-2], type = 'response')
-head(pred,3) # Probabilidades estimadas de ganar la carrera.
-
-x11() ; par(mfrow = c(1,2)) # El modelo tiene sentido.
-plot(X[train.id,45], pred[train.id], type = 'p', pch = 20,
-     xlab = 'win odds', ylab = 'Prob. Est. Ganar', main = 'Train')
-plot(X[-train.id,45],  pred[-train.id], type = 'p', pch = 20,
-     xlab = 'win odds', ylab = 'Prob. Est. Ganar', main = 'Test')
+# Área bajo la curva de ROC
+roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 
 #------------------------------------------------------------------------- End#
@@ -499,6 +498,7 @@ metricas(conf_matrix)
 roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 plot_classes(y_test, y_pred)
+
 
 
 
