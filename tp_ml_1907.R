@@ -20,7 +20,7 @@ source("C:/AAMIM/Machine learning/TP FINAL/functions.R")
 if(!require("pacman")) install.packages("pacman")
 pacman::p_load(tidyverse, ggplot2, caret, Rmisc, boot, stargazer, scales, glmnet, rpart, rpart.plot,
                ggthemes, dplyr, randomForest, xgboost, pROC, e1071, caret)
-
+library(Metrics)
 
 # Para visualizar graficos posteriormente
 theme_set(theme_bw()) # fondo blanco
@@ -388,11 +388,15 @@ for(i in 1:dim(parametros)[1]){ # i recorre la grilla de parÃ¡metros.
                                       cp=parametros[i,4]))
   y_pred <- predict(tree, val_set %>% select(-won))[,2]
   y_val <- val_set$won
-  conf_matrix <- table(y_val, y_pred = round(y_pred,0))
+  y_val = as.numeric(y_val)
+  y_val=as.vector(y_val)
+  y_pred = round(y_pred,0)
+  y_pred=as.vector(y_pred)
+  conf_matrix <- table(y_val, y_pred)
   accuracy <- sum(diag(prop.table(conf_matrix)))
   precision <- prop.table(conf_matrix, margin = 2)[2,2]
   recall <- prop.table(conf_matrix, margin = 1)[2,2]
-  fb_score <- (0.2*precision*recall)/(precision+recall)
+  fb_score <- fbeta_score(y_val,y_pred, beta=0.3)
   te[i]  <- fb_score
   print(i)
 }
@@ -431,6 +435,12 @@ y_pred <- predict(tree, test_set %>% select(-won))[,2]
 y_test <- test_set$won
 conf_matrix <- table(y_test, y_pred = round(y_pred,0))
 metricas(conf_matrix)
+y_test <- as.numeric(y_test)
+y_test <- as.vector(y_test)
+y_pred = round(y_pred,0)
+y_pred=as.vector(y_pred)
+fb_score <- fbeta_score(y_test,y_pred, beta=0.3)
+print(paste("Fb score:", round(fb_score, 3)))
 
 # Ãrea bajo la curva de ROC
 roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
@@ -469,7 +479,7 @@ roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 ### AJUSTAMOS BENCHMARK
 
-umbral = c (0.08,0.12,0.18,0.2,0.25)
+umbral = c (0.05,0.06,0.07, 0.08,0.12,0.18,0.2,0.25)
 
 te = c() #tasa de error estimada en logit
 
@@ -480,12 +490,15 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
   # Matriz de confusiÃ³n y accuracy
   y_pred <- predict(logit_reg, val_set_log %>% select(-won), type = "response")
   y_val <- val_set_log$won
-  y_pred <- ifelse(y_pred>umbral[i],1,0) ##probamos el umbral
+  y_val <- as.numeric(y_val)
+  y_val<-as.vector(y_val)
+  y_pred <- ifelse(y_pred>umbral[i],1,0)##probamos el umbral
+  y_pred <- as.vector(y_pred)
   conf_matrix <- table(y_val, y_pred)
   accuracy <- sum(diag(prop.table(conf_matrix)))
   precision <- prop.table(conf_matrix, margin = 2)[2,2]
   recall <- prop.table(conf_matrix, margin = 1)[2,2]
-  fb_score <- (0.2*precision*recall)/(precision+recall)
+  fb_score <- fbeta_score(y_val,y_pred, beta=0.3)
   te[i]  <- fb_score
   print(i)
 }
@@ -493,7 +506,7 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
 # print(te)
 which.max(te)
 
-#Reentrenamos modelo con el umbral correcto: 0.18
+#Reentrenamos modelo con el umbral correcto: 
 #sobre los datos de validacion
 
 train_set_log_new <- rbind(train_set_log,val_set_log)
@@ -501,12 +514,18 @@ train_set_log_new <- rbind(train_set_log,val_set_log)
 logit_reg <- glm(won ~ ., data = train_set_log_new, family = "binomial")
 
 y_pred <- predict(logit_reg, test_set_log %>% select(-won), type = "response")
-y_val <- test_set_log$won
-y_pred <- ifelse(y_pred>0.18,1,0) ##tomando 0.188 
+y_test <- test_set_log$won
+y_pred <- ifelse(y_pred>0.05,1,0) ##tomando 0.05
 
 # Matriz de confusiÃ³n y accuracy
-conf_matrix <- table(y_val, y_pred)
+conf_matrix <- table(y_test, y_pred)
 metricas(conf_matrix)
+y_test <- as.numeric(y_test)
+y_test <- as.vector(y_test)
+y_pred=as.vector(y_pred)
+fb_score <- fbeta_score(y_test,y_pred, beta=0.3)
+print(paste("Fb score:", round(fb_score, 3)))
+
 
 # Ãrea bajo la curva de ROC
 roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
