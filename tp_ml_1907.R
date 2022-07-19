@@ -362,7 +362,7 @@ roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 valores.minsplit = c(100,500)      # valores de "m"
 valores.minbucket = c(20,100)
 valores.maxdepth = c(5,20)
-valores.cp = c (0.001, 0.00001)
+valores.cp = c (0.001, 0.0001)
 # Complejidad de Ã¡rboles en el bosque.
 parametros = expand.grid(valores.minsplit = valores.minsplit,valores.minbucket = valores.minbucket,valores.maxdepth=valores.maxdepth,valores.cp=valores.cp ) 
 # En la prÃ¡ctica exploramos una grilla mucho mÃ¡s grande.
@@ -389,7 +389,7 @@ for(i in 1:dim(parametros)[1]){ # i recorre la grilla de parÃ¡metros.
   y_pred <- predict(tree, val_set %>% select(-won))[,2]
   y_val <- val_set$won
   conf_matrix <- table(y_val, y_pred = round(y_pred,0))
-  te[i] = numero <- (conf_matrix[1,2]+conf_matrix[2,1])/(sum(diag(conf_matrix))+conf_matrix[1,2]+conf_matrix[2,1])
+  te[i]  <- (conf_matrix[1,2]+conf_matrix[2,1])/(sum(diag(conf_matrix))+conf_matrix[1,2]+conf_matrix[2,1])
   print(i)
 }
 
@@ -431,6 +431,40 @@ metricas(conf_matrix)
 roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 #HASTA ACA CORRE EL MODELO
+#Limpiamos un poco la memoria
+
+rm(valores.cp, valores.maxdepth, valores.minbucket, valores.minsplit, parametros, tree,i,te)
+
+
+############################
+###    Reg. LogÃ­stica    ###
+############################
+
+
+train_set_log <- train_set %>%select(-horse_country,-max.age,-min.age)
+val_set_log <- val_set %>%select(-horse_country,-max.age,-min.age)
+test_set_log <- test_set %>%select(-horse_country,-max.age,-min.age)
+
+train_set_log = na.omit(train_set_log)
+
+
+logit_reg <- glm(won ~ ., data = train_set_log, family = "binomial")
+
+# Matriz de confusiÃ³n y accuracy
+y_pred <- predict(logit_reg, val_set_log %>% select(-won), type = "response")
+y_val <- val_set_log$won
+y_pred <- ifelse(y_pred>0.08,1,0) ##tomando 0.08 como benchmark
+
+conf_matrix <- table(y_val, y_pred = round(y_pred,0))
+metricas(conf_matrix)
+
+# Ãrea bajo la curva de ROC
+roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
+
+
+### ACA PODRIAMOS AJUSTAR EL BENCHMARK COMO AJUSTAMOS HIPERPARAMETROS
+##DESPUES LO PROBAMOS
+
 
 
 #------------------------------------------------------------------------- End#
