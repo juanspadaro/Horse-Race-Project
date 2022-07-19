@@ -389,15 +389,20 @@ for(i in 1:dim(parametros)[1]){ # i recorre la grilla de parÃ¡metros.
   y_pred <- predict(tree, val_set %>% select(-won))[,2]
   y_val <- val_set$won
   conf_matrix <- table(y_val, y_pred = round(y_pred,0))
-  te[i]  <- (conf_matrix[1,2]+conf_matrix[2,1])/(sum(diag(conf_matrix))+conf_matrix[1,2]+conf_matrix[2,1])
+  accuracy <- sum(diag(prop.table(conf_matrix)))
+  precision <- prop.table(conf_matrix, margin = 2)[2,2]
+  recall <- prop.table(conf_matrix, margin = 1)[2,2]
+  f1_score <- (0.2*precision*recall)/(precision+recall)
+  te[i]  <- f1_score
   print(i)
 }
 
 # print(te)
-which(min(te)==te)
+which(max(te)==te)
 
-#los mejores parametros son de la combinacion 1 y 9. 
-#vamos a probar con la combinacion 1, ahora hacemos las predicciones en el set de validacion.
+
+#Reentrenamos con los mejores hiperparametros 
+#en el set de validacion
 
 train_set_new <- rbind(train_set,val_set)
 
@@ -411,11 +416,11 @@ tree <- rpart(as.factor(won) ~ .,
                                     
                                     minbucket =20,
                                     
-                                    maxdepth = 5,
+                                    maxdepth = 20,
                                     
                                     xval=5 ,
                                     
-                                    cp=0.001))
+                                    cp=0.0001))
 
 #ploteamos el arbol
 rpart.plot(tree)
@@ -440,21 +445,21 @@ rm(valores.cp, valores.maxdepth, valores.minbucket, valores.minsplit, parametros
 ###    Reg. LogÃ­stica    ###
 ############################
 
-
-train_set_log <- train_set %>%select(-horse_country,-max.age,-min.age)
-val_set_log <- val_set %>%select(-horse_country,-max.age,-min.age)
-test_set_log <- test_set %>%select(-horse_country,-max.age,-min.age)
+#separamos la data
+train_set_log <- train_set %>%select(-horse_country,-max.age,-min.age,-draw)
+val_set_log <- val_set %>%select(-horse_country,-max.age,-min.age,-draw)
+test_set_log <- test_set %>%select(-horse_country,-max.age,-min.age,-draw)
 
 train_set_log = na.omit(train_set_log)
 
-
+#entrenamos modelo benchmark
 logit_reg <- glm(won ~ ., data = train_set_log, family = "binomial")
 
-# Matriz de confusiÃ³n y accuracy
 y_pred <- predict(logit_reg, val_set_log %>% select(-won), type = "response")
 y_val <- val_set_log$won
 y_pred <- ifelse(y_pred>0.08,1,0) ##tomando 0.08 como benchmark
 
+# Matriz de confusiÃ³n y accuracy
 conf_matrix <- table(y_val, y_pred = round(y_pred,0))
 metricas(conf_matrix)
 
@@ -462,8 +467,52 @@ metricas(conf_matrix)
 roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 
-### ACA PODRIAMOS AJUSTAR EL BENCHMARK COMO AJUSTAMOS HIPERPARAMETROS
-##DESPUES LO PROBAMOS
+### AJUSTAMOS BENCHMARK
+
+umbral = c (0.08,0.12,0.18,0.2,0.25)
+
+te = c() #tasa de error estimada en logit
+
+
+for(i in 1:length(umbral)){ # recorre todos los valores del umbral
+  logit_reg <- glm(won ~ ., data = train_set_log, family = "binomial")
+  
+  # Matriz de confusiÃ³n y accuracy
+  y_pred <- predict(logit_reg, val_set_log %>% select(-won), type = "response")
+  y_val <- val_set_log$won
+  y_pred <- ifelse(y_pred>umbral[i],1,0) ##probamos el umbral
+  conf_matrix <- table(y_val, y_pred)
+  accuracy <- sum(diag(prop.table(conf_matrix)))
+  precision <- prop.table(conf_matrix, margin = 2)[2,2]
+  recall <- prop.table(conf_matrix, margin = 1)[2,2]
+  f1_score <- (0.2*precision*recall)/(precision+recall)
+  te[i]  <- f1_score
+  print(i)
+}
+
+# print(te)
+which.max(te)
+
+#Reentrenamos modelo con el umbral correcto: 0.18
+#sobre los datos de validacion
+
+train_set_log_new <- rbind(train_set_log,val_set_log)
+
+logit_reg <- glm(won ~ ., data = train_set_log_new, family = "binomial")
+
+y_pred <- predict(logit_reg, test_set_log %>% select(-won), type = "response")
+y_val <- test_set_log$won
+y_pred <- ifelse(y_pred>0.18,1,0) ##tomando 0.188 
+
+# Matriz de confusiÃ³n y accuracy
+conf_matrix <- table(y_val, y_pred)
+metricas(conf_matrix)
+
+# Ãrea bajo la curva de ROC
+roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
+
+
+
 
 
 
