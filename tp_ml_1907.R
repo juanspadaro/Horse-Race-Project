@@ -356,7 +356,7 @@ parametros = expand.grid(valores.minsplit = valores.minsplit,valores.minbucket =
 # En la prÃ¡ctica exploramos una grilla mucho mÃ¡s grande.
 head(parametros,3) # Matriz de 12 filas x 2 columnas.
 
-te = c() # Tasa de error estimada por arboles
+te = c() #fb score para logit
 set.seed(1)
 for(i in 1:dim(parametros)[1]){ # i recorre la grilla de parÃ¡metros.
   tree <- rpart(as.factor(won) ~ .,
@@ -469,7 +469,7 @@ roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 umbral = c (0.05,0.06,0.07, 0.08,0.085, 0.09,0.12,0.18,0.2,0.25)
 
-te = c() #tasa de error estimada en logit
+te = c() #fb score para logit
 
 
 for(i in 1:length(umbral)){ # recorre todos los valores del umbral
@@ -495,7 +495,7 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
 which.max(te)
 
 #Reentrenamos modelo con el umbral correcto: 
-#sobre los datos de validacion
+#sobre los datos de test
 
 train_set_log_new <- rbind(train_set_log,val_set_log)
 
@@ -537,15 +537,23 @@ grid <- data.frame(mtry = seq(6,12, 6))
 train_set = na.omit(train_set)
 sum(is.na(train_set))
 
-rf <- train(won ~ ., 
-            data = train_set %>% mutate(won = ifelse(won == 0, "No", "Yes")), 
-            method = "rf", 
-            trControl = oob,
-            tuneGrid = grid,
-            metric = "ROC")
 
-# Matriz de confusión y accuracy
+# rf <- train(won ~ ., 
+#             data = train_set %>% mutate(won = ifelse(won == 0, "No", "Yes")), 
+#             method = "rf", 
+#             trControl = oob,
+#             tuneGrid = grid,
+#             metric = "ROC")
+
+#saveRDS(rf,"C:/AAMIM/Machine learning/TP FINAL/rf.RDS")
+
+rf <- readRDS("rf.RDS")
+
+
+# Armo primer modelo RF
 y_pred <- predict(rf, val_set %>% select(-won), type = "prob")[, 2]
+
+#Matriz de confusion
 y_pred <- ifelse(y_pred>0.02,1,0)
 y_val <- val_set$won
 conf_matrix <- table(y_val, y_pred)
@@ -554,113 +562,66 @@ metricas(conf_matrix)
 # Área bajo la curva de ROC
 roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
-plot_classes(y_val, y_pred)
-#------------------------------------------------------------------------- End#
+### AJUSTAMOS BENCHMARK
 
-# Etapa perscriptiva: Invirtiendo con el modelo.
-# Estrategia naive 2: SÃ³lo invierto en el caballo cuya prob. estimada de 
-#                     ganar es la mÃ¡ixma y siempre que Ã©sta sea mayor a 1/4.
+umbral = c (0.001, 0.01, 0.02,0.025,0.035,0.07)
 
-flag.logit     <- rep(NA,length(race_id)) # 1 si acierto ganador y 0 en otro caso.
-return.logit   <- rep(NA,length(race_id)) # Resultado neto de apostar en cada carrera.
-
-nbets.logit = naivebet1 =  0
-# Nota deberÃ­amos hacer esta cuenta sobre un conjunto de validaciÃ³n.
-for(i in 1:length(race_id)){
-  sel = which(X[,1] == race_id[i])
-  flag.logit[i]   <- as.integer(which.max(pred[sel])==which.max(X[sel,2])) # = 1 if max prob == real winer.
-  if( max(pred[sel]) > 0.25 ){ # Solo apuesto si estoy relativamente seguro de ganar
-    return.logit[i]  <- flag.logit[i]*X[sel[which.max(pred[sel])],45] - 1;
-    nbets.logit = nbets.logit + 1
-  } else {return.logit[i] = 0}
-  naivebet1 = naivebet1 + X[sel[which.max(X[sel,2])],45] - length(sel) # Apuesto 1 USD a cada caballo. 
-}
+te = c() #fb score para random forest
 
 
-# Estrategia de invertir 1 dÃ³lar por caballo en todas las carreras:
-naivebet1 / 75712 # Retorno sobre el total invertido
-naivebet1 # De los 75712 invertidos terminÃ© perdiendo 19400 (apporx)
-
-# AnÃ¡lisis de desempeÃ±o del modelo y de la estrategia de inversiÃ³n:
-mean(flag.logit) # Tasa de acierto del modelo (train + test)
-nbets.logit ; nbets.logit/length(race_id) # Apuesto solo el 1.2% de las carreras. 
-sum(return.logit)/nbets.logit  # Retorno sobre el total invertido (7.7%)
-
-
-
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#     
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# Estos modelos corren pero hay que mejorarlos  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#      
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#      
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~ 3.1) Random Forest (---------ok---------)#### 
-############### Sintonía fina de hiper-parámetros (OOB):
-valores.m = c(20,50,100)      # valores de "m"
-valores.maxnode = c(20,50,100)  # Complejidad de árboles en el bosque.
-parametros = expand.grid(valores.m = valores.m,valores.maxnode = valores.maxnode) 
-# En la práctica exploramos una grilla mucho más grande.
-head(parametros,3) # Matriz de 9 filas x 2 columnas.
-
-te = c() # Tasa de error estimada por OOB.
-set.seed(1)
-for(i in 1:dim(parametros)[1]){ # i recorre la grilla de parámetros.
-  forest.oob  = randomForest(won~.,
-                             data=train_set,
-                             mtry = 26, # m
-                             ntree=10,              # Mientras más grande, mejor.
-                             sample = 3000, 
-                             maxnodes = parametros[i,2], # complejidad 
-                             nodesize = 150, 
-                             proximity =F)  
-  te[i] = 1 - sum(diag(forest.oob$confusion[,-3]))/nrow(train_set)
+for(i in 1:length(umbral)){ # recorre todos los valores del umbral
+  y_pred <- predict(rf, val_set %>% select(-won), type = "prob")[, 2]
+  y_pred <- ifelse(y_pred>umbral[i],1,0)
+  
+  y_val <- val_set$won
+  conf_matrix <- table(y_val, y_pred)
+  y_val <- as.numeric(y_val)
+  y_val<-as.vector(y_val)
+  y_pred <- as.vector(y_pred)
+  
+  accuracy <- sum(diag(prop.table(conf_matrix)))
+  precision <- prop.table(conf_matrix, margin = 2)[2,2]
+  recall <- prop.table(conf_matrix, margin = 1)[2,2]
+  fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
+  te[i]  <- fb_score
   print(i)
 }
 
 # print(te)
-which(min(te)==te) #es 2 por eso va debajo debajo
-parametros[2,] # m* = 50, maxnode* = 50 (estimaciones de mala calidad porque B es relativamente pequeño)
+which.max(te)
 
-# Re-entrenamaos con m* y maxnodes*:
-modelo.final = randomForest(won~.,
-                            data=train_set,
-                            mtry   = 26,     # m*
-                            ntree  = 6,              
-                            sample = 3000, 
-                            maxnodes = 50, # complejidad*
-                            nodesize = 150,
-                            importance = F, 
-                            proximity  = F
-)  
-##---- FIN de selección de modelo.
 
-varImp(modelo.final) # Importancia de cada variable en el ensamble.
+#Reentrenamos modelo con el umbral correcto: 
+#sobre los datos de test
 
-# Graficamos a continuación
-dotPlot(varImp(modelo.final)) 
-dev.off() # Para cerrar la ventana de imagenes 
+train_set_new <- rbind(train_set,val_set)
+train_set = na.omit(train_set_new)
+sum(is.na(train_set_new))
 
-#### Extrapolamos como funcionaría el modelo seleccionado con el conjunto de test:
-pred.rfor.test = predict(modelo.final,newdata=val_set)
-matriz.conf = table(pred.rfor.test,y_val)
-matriz.conf
-1-sum(diag(matriz.conf))/13422 # 8.00% :) 12305+1037+49+31
 
-# Matriz de confusión y accuracy
-metricas(matriz.conf)
+y_pred <- predict(rf, test_set %>% select(-won), type = "prob")[, 2]
+
+#Matriz de confusion
+y_pred <- ifelse(y_pred>0.025,1,0)
+y_test <- test_set$won
+conf_matrix <- table(y_test, y_pred)
+metricas(conf_matrix)
+y_test <- as.numeric(y_test)
+y_test <- as.vector(y_test)
+y_pred=as.vector(y_pred)
+fb_score <- fbeta_score(y_test,y_pred, beta=0.05)
+print(paste("Fb score:", round(fb_score, 3)))
 
 # Área bajo la curva de ROC
-pred.rfor.test <- as.numeric(pred.rfor.test)
-roc(y_val ~ pred.rfor.test, plot = TRUE, print.auc = TRUE)
+roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
-#------------------------------------------------------------ END.
+varImp(rf) # Importancia de variable
 
+# Graficamos a continuación
+dotPlot(varImp(rf)) 
+dev.off() # cierra ventana 
 
-
-# ~~ 3.5) XGBoost (---------ok---------)#### 
+# ~~ 3.5) XGBoost #### 
 
 cv <- trainControl(method = "cv",
                    number = 5,
@@ -675,6 +636,8 @@ tune_grid <- expand.grid(nrounds = seq(from = 1, to = 5, by = 1),
                          colsample_bytree = c(0.4, 0.6, 0.8, 1.0),
                          min_child_weight = 1:6,
                          subsample = c(0.5, 0.75, 1.0)) %>% sample_n(30)
+
+
 
 sum(is.na(train_set))
 sum(is.na(test_set))
@@ -693,18 +656,21 @@ xgb <- train(won ~ .,
 #xgb <- readRDS("C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/xgb.RDS")
 
 # Matriz de confusión y accuracy
-y_pred <- predict(xgb, test_set %>% select(-won), type = "prob")[, 2]
-y_test <- test_set$won
-conf_matrix <- table(y_test, y_pred = round(y_pred,0))
+y_pred <- predict(xgb, val_set %>% select(-won), type = "prob")[, 2]
+y_val <- val_set$won
+#y_pred <- ifelse(y_pred>0.025,1,0)
+conf_matrix <- table(y_val, y_pred = round(y_pred,0))
 metricas(conf_matrix)
 
 # Área bajo la curva de ROC
-roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
+roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
-plot_classes(y_test, y_pred)
+# Área bajo la curva de ROC
+roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
+plot_classes(y_val, y_pred)
 
-
+#QUEDA VER SI AJUSTAMOS UMBRAL EN XGBOOST Y ENTRENAR EN TEST.
 
 
 
