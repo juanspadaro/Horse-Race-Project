@@ -1,3 +1,4 @@
+# Principio ----
 # Integrantes: Juan Spadaro; Nicolas Viñolo y Victoria Sosa
 
 rm(list = ls()) # Borra todo el ambiente de trabajo.
@@ -15,12 +16,66 @@ source("C:/AAMIM/Machine learning/TP FINAL/functions.R")
 #source('/Users/victoriasosa/Documents/MiM/2. Machine Learning/tp/functions.R')
 
 
-# Librerias ####
+# Librerias
 
 if(!require("pacman")) install.packages("pacman")
 pacman::p_load(tidyverse, ggplot2, caret, Rmisc, boot, stargazer, scales, glmnet, rpart, rpart.plot,
                ggthemes, dplyr, randomForest, xgboost, pROC, e1071, caret)
 library(Metrics)
+
+####cargamos funcion auxiliar
+
+random_grid <- function(size,
+                        min_nrounds, max_nrounds,
+                        min_max_depth, max_max_depth,
+                        min_eta, max_eta,
+                        min_gamma, max_gamma,
+                        min_colsample_bytree, max_colsample_bytree,
+                        min_min_child_weight, max_min_child_weight,
+                        min_subsample, max_subsample) {
+  
+  rgrid <- data.frame(nrounds = if (min_nrounds == max_nrounds) {
+    rep(min_nrounds, size)
+  } else {
+    sample(c(min_nrounds:max_nrounds),
+           size = size, replace = TRUE)
+  },
+  max_depth = if (min_max_depth == max_max_depth) {
+    rep(min_max_depth, size)
+  } else {
+    sample(c(min_max_depth:max_max_depth),
+           size = size, replace = TRUE)
+  },
+  eta = if (min_eta == max_eta) {
+    rep(min_eta, size)
+  } else {
+    round(runif(size, min_eta, max_eta), 7)
+  },
+  gamma = if (min_gamma == max_gamma) {
+    rep(min_gamma, size)
+  } else {
+    round(runif(size, min_gamma, max_gamma), 7)
+  },
+  colsample_bytree = if (min_colsample_bytree == max_colsample_bytree) {
+    rep(min_colsample_bytree, size)
+  } else {
+    round(runif(size, min_colsample_bytree, max_colsample_bytree), 7)
+  },
+  min_child_weight = if (min_min_child_weight == max_min_child_weight) {
+    rep(min_min_child_weight, size)
+  } else {
+    round(runif(size, min_min_child_weight, max_min_child_weight), 7)
+  },
+  subsample = if (min_subsample == max_subsample) {
+    rep(min_subsample, size)
+  } else {
+    round(runif(size, min_subsample, max_subsample), 7)
+  })
+  
+  return(rgrid)
+}
+
+
 
 # Para visualizar graficos posteriormente
 theme_set(theme_bw()) # fondo blanco
@@ -308,13 +363,22 @@ train_set <- raceruns %>% filter(train_val_test== "train") %>% select(-train_val
 val_set <- raceruns %>% filter(train_val_test== "valid") %>% select(-train_val_test)
 test_set <- raceruns %>% filter(train_val_test== "test") %>% select(-train_val_test)
 
+#por las dudas limpiamos na
+
+train_set = na.omit(train_set)
+val_set = na.omit(val_set)
+test_set = na.omit(test_set)
+
 rm(distance_boxplot, caballos_ganadores_segun_venue)
 
-#----------------------------------------------------#
+#3)Seleccion de modelos----------------------------
 
-############################
-###   Ãrbol de clasif.   ###
-############################
+
+
+
+
+
+#3)Arbol de clasificacion----------------------------
 
 tree <- rpart(as.factor(won) ~ .,
               
@@ -350,13 +414,14 @@ roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 valores.minsplit = c(100,500)      # valores de "m"
 valores.minbucket = c(20,100)
 valores.maxdepth = c(5,20)
-valores.cp = c (0.001, 0.0001)
-# Complejidad de Ã¡rboles en el bosque.
-parametros = expand.grid(valores.minsplit = valores.minsplit,valores.minbucket = valores.minbucket,valores.maxdepth=valores.maxdepth,valores.cp=valores.cp ) 
-# En la prÃ¡ctica exploramos una grilla mucho mÃ¡s grande.
-head(parametros,3) # Matriz de 12 filas x 2 columnas.
+valores.cp = c (0.001, 0.0001) #complejidad arbol
 
-te = c() #fb score para logit
+parametros = expand.grid(valores.minsplit = valores.minsplit,valores.minbucket = valores.minbucket,valores.maxdepth=valores.maxdepth,valores.cp=valores.cp ) 
+head(parametros,3) # 
+
+#~~3.1) Ajustamos hiperparametros ------
+
+fb = c() #fb score para logit
 set.seed(1)
 for(i in 1:dim(parametros)[1]){ # i recorre la grilla de parÃ¡metros.
   tree <- rpart(as.factor(won) ~ .,
@@ -385,14 +450,14 @@ for(i in 1:dim(parametros)[1]){ # i recorre la grilla de parÃ¡metros.
   precision <- prop.table(conf_matrix, margin = 2)[2,2]
   recall <- prop.table(conf_matrix, margin = 1)[2,2]
   fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
-  te[i]  <- fb_score
+  fb[i]  <- fb_score
   print(i)
 }
 
-# print(te)
-which(max(te)==te)
+# print(fb)
+which(max(fb)==fb)
 
-
+#~~3.2) Reentrenamos modelo ------
 #Reentrenamos con los mejores hiperparametros 
 #en el set de validacion
 
@@ -439,9 +504,7 @@ roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 rm(valores.cp, valores.maxdepth, valores.minbucket, valores.minsplit, parametros, tree,i,te)
 
 
-############################
-###    Reg. LogÃ­stica    ###
-############################
+#4) Regresion logistica ------
 
 #separamos la data
 train_set_log <- train_set %>%select(-horse_country,-max.age,-min.age,-draw)
@@ -465,11 +528,13 @@ metricas(conf_matrix)
 roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 
+#~~4.1) Ajustamos umbral ------
+
 ### AJUSTAMOS BENCHMARK
 
 umbral = c (0.05,0.06,0.07, 0.08,0.085, 0.09,0.12,0.18,0.2,0.25)
 
-te = c() #fb score para logit
+fb = c() #fb score para logit
 
 
 for(i in 1:length(umbral)){ # recorre todos los valores del umbral
@@ -487,13 +552,14 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
   precision <- prop.table(conf_matrix, margin = 2)[2,2]
   recall <- prop.table(conf_matrix, margin = 1)[2,2]
   fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
-  te[i]  <- fb_score
+  fb[i]  <- fb_score
   print(i)
 }
 
-# print(te)
-which.max(te)
+# print(fb)
+max <- which.max(fb)
 
+#~~4.2) Reentrenamos modelo ------
 #Reentrenamos modelo con el umbral correcto: 
 #sobre los datos de test
 
@@ -503,7 +569,7 @@ logit_reg <- glm(won ~ ., data = train_set_log_new, family = "binomial")
 
 y_pred <- predict(logit_reg, test_set_log %>% select(-won), type = "response")
 y_test <- test_set_log$won
-y_pred <- ifelse(y_pred>0.18,1,0) ##tomando 0.05
+y_pred <- ifelse(y_pred>umbral[max],1,0) ##tomando 0.05
 
 # Matriz de confusiÃ³n y accuracy
 conf_matrix <- table(y_test, y_pred)
@@ -522,18 +588,16 @@ roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 rm(train_set_log, val_set_log, test_set_log, train_set_log_new,logit_reg)
 
+#----------------------------------------------------#
 
+#5) Random forest ------
 
-
-#RANDOM FOREST ----------------------------
-
-############################
 
 oob <- trainControl(method = "oob",
                     classProbs = TRUE,
                     verboseIter = TRUE)
-#grid <- data.frame(mtry = seq(2,16, 2))
-grid <- data.frame(mtry = seq(6,12, 6))
+grid <- data.frame(mtry = seq(2,18, 2))
+
 train_set = na.omit(train_set)
 sum(is.na(train_set))
 
@@ -562,11 +626,13 @@ metricas(conf_matrix)
 # Área bajo la curva de ROC
 roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
-### AJUSTAMOS BENCHMARK
+#~~5.1) Ajustamos umbral ------
+
+### AJUSTAMOS UMBRAL
 
 umbral = c (0.001, 0.01, 0.02,0.025,0.035,0.07)
 
-te = c() #fb score para random forest
+fb = c() #fb score para random forest
 
 
 for(i in 1:length(umbral)){ # recorre todos los valores del umbral
@@ -583,14 +649,14 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
   precision <- prop.table(conf_matrix, margin = 2)[2,2]
   recall <- prop.table(conf_matrix, margin = 1)[2,2]
   fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
-  te[i]  <- fb_score
+  fb[i]  <- fb_score
   print(i)
 }
 
-# print(te)
-which.max(te)
+# print(fb)
+max <-which.max(fb)
 
-
+#~~5.2) Reentrenamos modelo ------
 #Reentrenamos modelo con el umbral correcto: 
 #sobre los datos de test
 
@@ -602,7 +668,7 @@ sum(is.na(train_set_new))
 y_pred <- predict(rf, test_set %>% select(-won), type = "prob")[, 2]
 
 #Matriz de confusion
-y_pred <- ifelse(y_pred>0.025,1,0)
+y_pred <- ifelse(y_pred>umbral[max],1,0)
 y_test <- test_set$won
 conf_matrix <- table(y_test, y_pred)
 metricas(conf_matrix)
@@ -621,7 +687,7 @@ varImp(rf) # Importancia de variable
 dotPlot(varImp(rf)) 
 dev.off() # cierra ventana 
 
-# ~~ 3.5) XGBoost #### 
+#6) XGBoost ------
 
 cv <- trainControl(method = "cv",
                    number = 5,
@@ -639,42 +705,99 @@ tune_grid <- expand.grid(nrounds = seq(from = 1, to = 5, by = 1),
 
 
 
+rgrid <- random_grid(size = 10,
+                     min_nrounds = 50, max_nrounds =200,
+                     min_max_depth = 5, max_max_depth = 15,
+                     min_eta = 0.001, max_eta = 0.1,
+                     min_gamma = 0.1, max_gamma = 1,
+                     min_colsample_bytree = 0.6, max_colsample_bytree = 1,
+                     min_min_child_weight = 1, max_min_child_weight = 10,
+                     min_subsample = 0.75, max_subsample = 1)
+
+
+
+
 sum(is.na(train_set))
 sum(is.na(test_set))
 # eliminamos los datos faltantes debido a que no son representativos según la exploración de datos realizada
 train_set <- na.omit(train_set) 
 test_set <- na.omit(test_set)
 
-xgb <- train(won ~ ., 
-             data = train_set %>% mutate(won = ifelse(won == 0, "No", "Yes")), 
-             method = "xgbTree", 
+xgb <- train(won ~ .,
+             data = train_set %>% mutate(won = ifelse(won == 0, "No", "Yes")),
+             method = "xgbTree",
              trControl = cv,
-             tuneGrid = tune_grid,
+             tuneGrid = rgrid,
              metric = "ROC")
 
-#saveRDS(xgb, "C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/xgb.RDS")
-#xgb <- readRDS("C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/xgb.RDS")
+#saveRDS(xgb, "C:/AAMIM/Machine learning/TP FINAL/xgb.RDS")
+xgb <- readRDS("C:/AAMIM/Machine learning/TP FINAL/xgb.RDS")
 
-# Matriz de confusión y accuracy
+#Entrenamos primer modelo
 y_pred <- predict(xgb, val_set %>% select(-won), type = "prob")[, 2]
+
+#metricas
 y_val <- val_set$won
-#y_pred <- ifelse(y_pred>0.025,1,0)
-conf_matrix <- table(y_val, y_pred = round(y_pred,0))
+y_pred <- ifelse(y_pred>0.5,1,0)
+conf_matrix <- table(y_val, y_pred)
 metricas(conf_matrix)
 
 # Área bajo la curva de ROC
 roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
+
+#~~6.1) Ajustamos umbral ------
+
+umbral = c (0.05,0.1, 0.2,0.22,0.23,0.25,0.26,0.27, 0.28,0.29,0.3,0.33,0.4,0.5)
+
+fb = c() #fb score para XGBOOST
+
+
+for(i in 1:length(umbral)){ # recorre todos los valores del umbral
+  y_pred <- predict(xgb, val_set %>% select(-won), type = "prob")[, 2]
+  y_pred <- ifelse(y_pred>umbral[i],1,0)
+  
+  y_val <- val_set$won
+  conf_matrix <- table(y_val, y_pred)
+  y_val <- as.numeric(y_val)
+  y_val<-as.vector(y_val)
+  y_pred <- as.vector(y_pred)
+  
+  accuracy <- sum(diag(prop.table(conf_matrix)))
+  precision <- prop.table(conf_matrix, margin = 2)[2,2]
+  recall <- prop.table(conf_matrix, margin = 1)[2,2]
+  fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
+  fb[i]  <- fb_score
+  print(i)
+}
+
+# print(fb)
+max <-which.max(fb)
+umbral[max]
+
+#~~6.2) Reentrenamos modelo ------
+#Reentrenamos modelo con el umbral correcto: 
+#sobre los datos de test
+
+train_set_new <- rbind(train_set,val_set)
+train_set = na.omit(train_set_new)
+sum(is.na(train_set_new))
+
+
+y_pred <- predict(xgb, test_set %>% select(-won), type = "prob")[, 2]
+
+#Metricas
+y_pred <- ifelse(y_pred>umbral[max],1,0)
+y_test <- test_set$won
+conf_matrix <- table(y_test, y_pred)
+metricas(conf_matrix)
+y_test <- as.numeric(y_test)
+y_test <- as.vector(y_test)
+y_pred=as.vector(y_pred)
+fb_score <- fbeta_score(y_test,y_pred, beta=0.05)
+print(paste("Fb score:", round(fb_score, 3)))
+
 # Área bajo la curva de ROC
-roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
-
-plot_classes(y_val, y_pred)
-
-#QUEDA VER SI AJUSTAMOS UMBRAL EN XGBOOST Y ENTRENAR EN TEST.
-
-
-
-
-
+roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 
