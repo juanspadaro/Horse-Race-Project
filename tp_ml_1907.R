@@ -542,7 +542,7 @@ print(paste("Fb score:", round(fb_score, 3)))
 roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 
-#3)Arbol de clasificacion----------------------------
+#4)Arbol de clasificacion----------------------------
 
 tree <- rpart(as.factor(won) ~ .,
               
@@ -583,7 +583,7 @@ valores.cp = c (0.001, 0.0001) #complejidad arbol
 parametros = expand.grid(valores.minsplit = valores.minsplit,valores.minbucket = valores.minbucket,valores.maxdepth=valores.maxdepth,valores.cp=valores.cp ) 
 head(parametros,3) # 
 
-#~~3.1) Ajustamos hiperparametros ------
+#~~4.1) Ajustamos hiperparametros ------
 
 fb = c() #fb score para logit
 set.seed(1)
@@ -621,7 +621,7 @@ for(i in 1:dim(parametros)[1]){ # i recorre la grilla de parÃ¡metros.
 # print(fb)
 which(max(fb)==fb)
 
-#~~3.2) Reentrenamos modelo ------
+#~~4.2) Reentrenamos modelo ------
 #Reentrenamos con los mejores hiperparametros 
 #en el set de validacion
 
@@ -664,7 +664,7 @@ roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 
 
-#4) Regresion logistica ------
+#5) Regresion logistica ------
 
 #separamos la data
 train_set_log <- train_set %>%select(-horse_country,-max.age,-min.age,-draw)
@@ -688,7 +688,7 @@ metricas(conf_matrix)
 roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 
-#~~4.1) Ajustamos umbral ------
+#~~5.1) Ajustamos umbral ------
 
 ### AJUSTAMOS BENCHMARK
 
@@ -719,7 +719,7 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
 # print(fb)
 max <- which.max(fb)
 
-#~~4.2) Reentrenamos modelo ------
+#~~5.2) Reentrenamos modelo ------
 #Reentrenamos modelo con el umbral correcto: 
 #sobre los datos de test
 
@@ -750,7 +750,7 @@ rm(train_set_log, val_set_log, test_set_log, train_set_log_new,logit_reg)
 
 #----------------------------------------------------#
 
-#5) Random forest ------
+#6) Random forest ------
 
 
 oob <- trainControl(method = "oob",
@@ -786,7 +786,7 @@ metricas(conf_matrix)
 # Área bajo la curva de ROC
 roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
-#~~5.1) Ajustamos umbral ------
+#~~6.1) Ajustamos umbral ------
 
 ### AJUSTAMOS UMBRAL
 
@@ -817,7 +817,7 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
 max <-which.max(fb)
 
 
-#~~5.2) Reentrenamos modelo ------
+#~~6.2) Reentrenamos modelo ------
 #Reentrenamos modelo con el umbral correcto: 
 #sobre los datos de test
 
@@ -859,7 +859,7 @@ varImp(rf2) # Importancia de variable
 dotPlot(varImp(rf2)) 
 dev.off() # cierra ventana 
 
-#6) XGBoost ------
+#7) XGBoost ------
 
 cv <- trainControl(method = "cv",
                    number = 5,
@@ -909,7 +909,7 @@ metricas(conf_matrix)
 roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 
-#~~6.1) Ajustamos umbral ------
+#~~7.1) Ajustamos umbral ------
 
 umbral = c (0.05,0.1, 0.2,0.22,0.23,0.25,0.26,0.27, 0.28,0.29,0.3,0.33,0.4,0.5)
 
@@ -938,7 +938,7 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
 max <-which.max(fb)
 umbral[max]
 
-#~~6.2) Reentrenamos modelo ------
+#~~7.2) Reentrenamos modelo ------
 #Reentrenamos modelo con el umbral correcto: 
 #sobre los datos de test
 
