@@ -369,13 +369,177 @@ train_set = na.omit(train_set)
 val_set = na.omit(val_set)
 test_set = na.omit(test_set)
 
-rm(distance_boxplot, caballos_ganadores_segun_venue)
+rm(caballos_ganadores_segun_venue)
 
 #3)Seleccion de modelos----------------------------
 
+X=train_set[,c(2,5,7,8,10,11,16,18,20)]
+
+y = train_set[,1]
+
+pca <- prcomp(X, center = T, scale = T) # Escalamos las variables.
+
+### Visualización:
+library(factoextra)
+fviz_eig(pca)
+
+# Scree plot y Gráfico de varianza acumulada:
+x11()
+par(mfrow = c(1,2))
+plot(pca$sdev^2, type = 'b', main ='Scree plot', ylab = '', xlab = 'm')
+tm = cumsum(pca$sdev^2) / sum(pca$sdev^2)  #con 6 explicamos mas del 80% de la varianza
+plot(tm, type = 'b', main ='Varianza acumulada', ylab = '', xlab = 'm')
+
+# PCR:
+datos <- data.frame(y,pca$x)
+datos$y <-as.numeric(datos$y)
+head(datos,3)
+
+pcr <- lm(y~PC1+PC2+PC3+PC4+PC5+PC6, data = datos)
+summary(pcr) #R2adj = 0.03205 muy bajo
+
+X_val<-val_set[,c(2,5,7,8,10,11,16,18,20)]
+
+y_val <- val_set[,1]
+
+pca_val <- prcomp(X_val, center = T, scale = T)
+
+datos_val <- data.frame(y_val,pca_val$x)
+datos_val$y_val <-as.numeric(datos_val$y_val)
+
+pcr_val <- lm(y~PC1+PC2+PC3+PC4+PC5+PC6, data = datos)
+y_pred <- predict(pcr_val, newdata = datos_val)
+y_pred <- ifelse(y_pred>1.05,1,0) 
+
+# Matriz de confusiÃ³n y accuracy
+
+y_val = as.numeric(y_val)
+y_val=as.vector(y_val)
+y_pred=as.vector(y_pred)
+
+conf_matrix <- table(y_val, y_pred)
+metricas(conf_matrix)
+accuracy <- sum(diag(prop.table(conf_matrix)))
+precision <- prop.table(conf_matrix, margin = 2)[2,2]
+recall <- prop.table(conf_matrix, margin = 1)[2,2]
+fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
+fb_score
+#~~3.1) Optimizamos cuantas variables usar----
+
+fb <- c()
+fb[1]  <- fb_score #con 6
+
+#probamos con 5
+
+pcr_val <- lm(y~PC1+PC2+PC3+PC4+PC5, data = datos)
+y_pred <- predict(pcr_val, newdata = datos_val)
+y_pred <- ifelse(y_pred>1.05,1,0) 
+
+# Matriz de confusiÃ³n y accuracy
+
+y_val = as.numeric(y_val)
+y_val=as.vector(y_val)
+y_pred=as.vector(y_pred)
+
+conf_matrix <- table(y_val, y_pred)
+accuracy <- sum(diag(prop.table(conf_matrix)))
+precision <- prop.table(conf_matrix, margin = 2)[2,2]
+recall <- prop.table(conf_matrix, margin = 1)[2,2]
+fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
+fb_score
+fb[2]  <- fb_score #con 5
+
+#probamos con 7
+
+pcr_val <- lm(y~PC1+PC2+PC3+PC4+PC5+PC6+PC7, data = datos)
+y_pred <- predict(pcr_val, newdata = datos_val)
+y_pred <- ifelse(y_pred>1.05,1,0) 
+
+# Matriz de confusiÃ³n y accuracy
+
+y_val = as.numeric(y_val)
+y_val=as.vector(y_val)
+y_pred=as.vector(y_pred)
+
+conf_matrix <- table(y_val, y_pred)
+accuracy <- sum(diag(prop.table(conf_matrix)))
+precision <- prop.table(conf_matrix, margin = 2)[2,2]
+recall <- prop.table(conf_matrix, margin = 1)[2,2]
+fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
+fb_score
+fb[3]  <- fb_score #con 7
+which(max(fb)==fb)
+
+#el mejor es con 7 variables.
+
+### AJUSTAMOS UMBRAL
+
+umbral = c (1.02, 1.05, 1.1)
+
+fb = c() #fb score para PCA
+
+
+for(i in 1:length(umbral)){ # recorre todos los valores del umbral
+  pcr_val <- lm(y~PC1+PC2+PC3+PC4+PC5+PC6+PC7, data = datos)
+  y_pred <- predict(pcr_val, newdata = datos_val)
+  y_pred <- ifelse(y_pred>umbral[i],1,0) 
+  
+  y_val <- val_set$won
+  conf_matrix <- table(y_val, y_pred)
+  y_val <- as.numeric(y_val)
+  y_val<-as.vector(y_val)
+  y_pred <- as.vector(y_pred)
+  
+  accuracy <- sum(diag(prop.table(conf_matrix)))
+  precision <- prop.table(conf_matrix, margin = 2)[2,2]
+  recall <- prop.table(conf_matrix, margin = 1)[2,2]
+  fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
+  fb[i]  <- fb_score
+  print(i)
+}
+
+# print(fb)
+max <-which.max(fb)
+max #UMBRAL 2
+
+#~~3.2) Reentrenamos modelo ------
+#Reentrenamos modelo con el umbral correcto: 
+#sobre los datos de test
+
+train_set_new <- rbind(train_set,val_set)
+
+X<-train_set_new[,c(2,5,7,8,10,11,16,18,20)]
+X_test <- test_set[,c(2,5,7,8,10,11,16,18,20)]
+y <- train_set_new[,1]
+y_test <- test_set[,1]
+
+pca <- prcomp(X, center = T, scale = T)
+pca_test <- prcomp(X_test, center = T, scale = T)
+
+datos <- data.frame(y,pca$x)
+datos$y <-as.numeric(datos$y)
+datos_test <- data.frame(y_test,pca_test$x)
+datos_test$y_test <-as.numeric(datos_test$y_test)
 
 
 
+pcr <- lm(y~PC1+PC2+PC3+PC4+PC5+PC6+PC7, data = datos)
+y_pred <- predict(pcr, newdata = datos_test)
+y_pred <- ifelse(y_pred>umbral[max],1,0) 
+y_test <- test_set$won
+
+#Matriz de confusion
+
+conf_matrix <- table(y_test, y_pred)
+metricas(conf_matrix)
+y_test <- as.numeric(y_test)
+y_test <- as.vector(y_test)
+y_pred=as.vector(y_pred)
+fb_score <- fbeta_score(y_test,y_pred, beta=0.05)
+print(paste("Fb score:", round(fb_score, 3)))
+
+# Área bajo la curva de ROC
+roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 
 #3)Arbol de clasificacion----------------------------
@@ -498,10 +662,6 @@ print(paste("Fb score:", round(fb_score, 3)))
 # Ãrea bajo la curva de ROC
 roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
-#HASTA ACA CORRE EL MODELO
-#Limpiamos un poco la memoria
-
-rm(valores.cp, valores.maxdepth, valores.minbucket, valores.minsplit, parametros, tree,i,te)
 
 
 #4) Regresion logistica ------
@@ -596,7 +756,7 @@ rm(train_set_log, val_set_log, test_set_log, train_set_log_new,logit_reg)
 oob <- trainControl(method = "oob",
                     classProbs = TRUE,
                     verboseIter = TRUE)
-grid <- data.frame(mtry = seq(2,18, 2))
+grid <- data.frame(mtry = seq(2,16, 2))
 
 train_set = na.omit(train_set)
 sum(is.na(train_set))
@@ -656,16 +816,28 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
 # print(fb)
 max <-which.max(fb)
 
+
 #~~5.2) Reentrenamos modelo ------
 #Reentrenamos modelo con el umbral correcto: 
 #sobre los datos de test
 
 train_set_new <- rbind(train_set,val_set)
-train_set = na.omit(train_set_new)
+train_set_new = na.omit(train_set_new)
 sum(is.na(train_set_new))
 
+# rf2 <- train(won ~ .,
+#              data = train_set_new %>% mutate(won = ifelse(won == 0, "No", "Yes")),
+#              method = "rf",
+#              trControl = oob,
+#              tuneGrid = grid,
+#              metric = "ROC")
 
-y_pred <- predict(rf, test_set %>% select(-won), type = "prob")[, 2]
+#saveRDS(rf2,"C:/AAMIM/Machine learning/TP FINAL/rf2.RDS")
+
+rf2 <- readRDS("rf2.RDS")
+
+
+y_pred <- predict(rf2, test_set %>% select(-won), type = "prob")[, 2]
 
 #Matriz de confusion
 y_pred <- ifelse(y_pred>umbral[max],1,0)
@@ -681,10 +853,10 @@ print(paste("Fb score:", round(fb_score, 3)))
 # Área bajo la curva de ROC
 roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
-varImp(rf) # Importancia de variable
+varImp(rf2) # Importancia de variable
 
 # Graficamos a continuación
-dotPlot(varImp(rf)) 
+dotPlot(varImp(rf2)) 
 dev.off() # cierra ventana 
 
 #6) XGBoost ------
@@ -694,15 +866,6 @@ cv <- trainControl(method = "cv",
                    classProbs = TRUE,
                    verboseIter = TRUE,
                    summaryFunction = twoClassSummary)
-
-tune_grid <- expand.grid(nrounds = seq(from = 1, to = 5, by = 1),
-                         eta = c(0.01, 0.025, 0.05, 0.1, 0.3, 0.4),
-                         max_depth = 4:8,
-                         gamma = c(0, 0.05, 0.1, 0.5, 0.7, 0.9, 1.0),
-                         colsample_bytree = c(0.4, 0.6, 0.8, 1.0),
-                         min_child_weight = 1:6,
-                         subsample = c(0.5, 0.75, 1.0)) %>% sample_n(30)
-
 
 
 rgrid <- random_grid(size = 10,
@@ -723,12 +886,12 @@ sum(is.na(test_set))
 train_set <- na.omit(train_set) 
 test_set <- na.omit(test_set)
 
-xgb <- train(won ~ .,
-             data = train_set %>% mutate(won = ifelse(won == 0, "No", "Yes")),
-             method = "xgbTree",
-             trControl = cv,
-             tuneGrid = rgrid,
-             metric = "ROC")
+# xgb <- train(won ~ .,
+#              data = train_set %>% mutate(won = ifelse(won == 0, "No", "Yes")),
+#              method = "xgbTree",
+#              trControl = cv,
+#              tuneGrid = rgrid,
+#              metric = "ROC")
 
 #saveRDS(xgb, "C:/AAMIM/Machine learning/TP FINAL/xgb.RDS")
 xgb <- readRDS("C:/AAMIM/Machine learning/TP FINAL/xgb.RDS")
@@ -780,11 +943,22 @@ umbral[max]
 #sobre los datos de test
 
 train_set_new <- rbind(train_set,val_set)
-train_set = na.omit(train_set_new)
+train_set_new = na.omit(train_set_new)
 sum(is.na(train_set_new))
 
+# xgb2 <- train(won ~ .,
+#              data = train_set_new %>% mutate(won = ifelse(won == 0, "No", "Yes")),
+#              method = "xgbTree",
+#              trControl = cv,
+#              tuneGrid = rgrid[max,],
+#              metric = "ROC")
 
-y_pred <- predict(xgb, test_set %>% select(-won), type = "prob")[, 2]
+#saveRDS(xgb2, "C:/AAMIM/Machine learning/TP FINAL/xgb2.RDS")
+xgb2 <- readRDS("C:/AAMIM/Machine learning/TP FINAL/xgb2.RDS")
+
+
+
+y_pred <- predict(xgb2, test_set %>% select(-won), type = "prob")[, 2]
 
 #Metricas
 y_pred <- ifelse(y_pred>umbral[max],1,0)
