@@ -20,7 +20,7 @@ source("C:/AAMIM/Machine learning/TP FINAL/functions.R")
 
 if(!require("pacman")) install.packages("pacman")
 pacman::p_load(tidyverse, ggplot2, caret, Rmisc, boot, stargazer, scales, glmnet, rpart, rpart.plot,
-               ggthemes, dplyr, randomForest, xgboost, pROC, e1071, caret, Metrics)
+               ggthemes, dplyr, randomForest, xgboost, pROC, e1071, caret, Metrics,factoextra)
 
 
 # Para visualizar graficos posteriormente
@@ -529,7 +529,6 @@ y <- train_set[,1]
 pca <- prcomp(X, center = T, scale = T) # Escalamos las variables.
 
 ### Visualización:
-library(factoextra)
 fviz_eig(pca)
 
 # Scree plot y Gráfico de varianza acumulada:
