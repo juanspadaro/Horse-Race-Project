@@ -822,9 +822,9 @@ roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 #5) Regresion logistica ------
 
 #separamos la data
-train_set_log <- train_set %>%select(-horse_country,-max.age,-min.age,-draw)
-val_set_log <- val_set %>%select(-horse_country,-max.age,-min.age,-draw)
-test_set_log <- test_set %>%select(-horse_country,-max.age,-min.age,-draw)
+train_set_log <- train_set %>%select(-max.age,-min.age,-draw)
+val_set_log <- val_set %>%select(-max.age,-min.age,-draw)
+test_set_log <- test_set %>%select(-max.age,-min.age,-draw)
 
 train_set_log = na.omit(train_set_log)
 
@@ -836,8 +836,14 @@ y_val <- val_set_log$won
 y_pred <- ifelse(y_pred>0.08,1,0) ##tomando 0.08 como benchmark
 
 # Matriz de confusiÃ³n y accuracy
-conf_matrix <- table(y_val, y_pred = round(y_pred,0))
+conf_matrix <- table(y_val, y_pred)
 metricas(conf_matrix)
+y_val <- as.numeric(y_val)
+y_val <- as.vector(y_val)
+y_pred=as.vector(y_pred)
+fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
+print(paste("Fb score:", round(fb_score, 3)))
+
 
 # Ãrea bajo la curva de ROC
 roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
@@ -851,9 +857,8 @@ umbral = c (0.05,0.06,0.07, 0.08,0.085, 0.09,0.12,0.18,0.2,0.25)
 
 fb = c() #fb score para logit
 
-
+logit_reg <- glm(won ~ ., data = train_set_log, family = "binomial")
 for(i in 1:length(umbral)){ # recorre todos los valores del umbral
-  logit_reg <- glm(won ~ ., data = train_set_log, family = "binomial")
   
   # Matriz de confusiÃ³n y accuracy
   y_pred <- predict(logit_reg, val_set_log %>% select(-won), type = "response")
@@ -863,9 +868,6 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
   y_pred <- ifelse(y_pred>umbral[i],1,0)##probamos el umbral
   y_pred <- as.vector(y_pred)
   conf_matrix <- table(y_val, y_pred)
-  accuracy <- sum(diag(prop.table(conf_matrix)))
-  precision <- prop.table(conf_matrix, margin = 2)[2,2]
-  recall <- prop.table(conf_matrix, margin = 1)[2,2]
   fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
   fb[i]  <- fb_score
   print(i)
@@ -873,7 +875,7 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
 
 # print(fb)
 max <- which.max(fb)
-
+max
 #~~5.2) Reentrenamos modelo ------
 #Reentrenamos modelo con el umbral correcto: 
 #sobre los datos de test
@@ -907,26 +909,26 @@ rm(train_set_log, val_set_log, test_set_log, train_set_log_new,logit_reg)
 
 #6) Random forest ------
 
-
+set.seed(1)
 oob <- trainControl(method = "oob",
                     classProbs = TRUE,
                     verboseIter = TRUE)
-grid <- data.frame(mtry = seq(2,16, 2))
+grid <- data.frame(mtry = seq(6,10, 2))
 
 train_set = na.omit(train_set)
 sum(is.na(train_set))
 
 
-# rf <- train(won ~ ., 
-#             data = train_set %>% mutate(won = ifelse(won == 0, "No", "Yes")), 
-#             method = "rf", 
-#             trControl = oob,
-#             tuneGrid = grid,
-#             metric = "ROC")
+rf <- train(won ~ .,
+            data = train_set %>% mutate(won = ifelse(won == 0, "No", "Yes")),
+            method = "rf",
+            trControl = oob,
+            tuneGrid = grid,
+            metric = "ROC")
 
-#saveRDS(rf,"C:/AAMIM/Machine learning/TP FINAL/rf.RDS")
+saveRDS(rf,"C:/AAMIM/Machine learning/TP FINAL/rf.RDS")
 
-rf <- readRDS("rf.RDS")
+#rf <- readRDS("rf.RDS")
 
 
 # Armo primer modelo RF
@@ -980,6 +982,7 @@ train_set_new <- rbind(train_set,val_set)
 train_set_new = na.omit(train_set_new)
 sum(is.na(train_set_new))
 
+set.seed(1)
 # rf2 <- train(won ~ .,
 #              data = train_set_new %>% mutate(won = ifelse(won == 0, "No", "Yes")),
 #              method = "rf",
@@ -1022,7 +1025,7 @@ cv <- trainControl(method = "cv",
                    verboseIter = TRUE,
                    summaryFunction = twoClassSummary)
 
-
+set.seed(1)
 rgrid <- random_grid(size = 10,
                      min_nrounds = 50, max_nrounds =200,
                      min_max_depth = 5, max_max_depth = 15,
@@ -1041,6 +1044,7 @@ sum(is.na(test_set))
 train_set <- na.omit(train_set) 
 test_set <- na.omit(test_set)
 
+set.seed(1)
 # xgb <- train(won ~ .,
 #              data = train_set %>% mutate(won = ifelse(won == 0, "No", "Yes")),
 #              method = "xgbTree",
@@ -1101,6 +1105,7 @@ train_set_new <- rbind(train_set,val_set)
 train_set_new = na.omit(train_set_new)
 sum(is.na(train_set_new))
 
+set.seed(1)
 # xgb2 <- train(won ~ .,
 #              data = train_set_new %>% mutate(won = ifelse(won == 0, "No", "Yes")),
 #              method = "xgbTree",
