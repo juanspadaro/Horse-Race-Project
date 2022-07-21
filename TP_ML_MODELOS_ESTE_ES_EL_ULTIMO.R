@@ -514,7 +514,7 @@ test_set = na.omit(test_set)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Fin del punto 2.4)
 
-# 3) Selección de modelos ####
+# 3) PCA ####
 
 X=train_set[,c(2,4,6,7,9,10,15,17,19,22,23)] 
 y <- train_set[,1]
