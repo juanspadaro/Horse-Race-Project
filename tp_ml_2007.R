@@ -1260,5 +1260,26 @@ y_final$ganancia_total <- y_final$ganancia_ganador_dob+y_final$ganancia_podio_do
 retorno_por_dolar <- (sum(y_final$ganancia_total)/(sum(y_final$apuestasimple)+sum(y_final$apuestadoble))-1)*100
 print(paste("Por cada dolar invertido, obtengo un retorno del:", round(retorno_por_dolar, 3),"%"))
 
+#~~8.6) Apostando distintos montos dependiendo de la probabilidad  ----
+
+y_pred <- predict(xgb2, test_set %>% select(-won), type = "prob")[, 2]
+
+y_final$apuestatriple <- ifelse(y_pred>0.55,1,0)
+y_final$apuestadoble <- ifelse(y_pred>0.4,1,0)
+y_final$apuestasimple<- ifelse(y_pred>0.2,1,0)
+
+y_final$ganancia_ganador_tri <- ifelse(y_final$won==1 & y_final$apuestatriple==1, y_final$win_odds,0)
+y_final$ganancia_podio_tri<- ifelse(y_final$is_top3==1 & y_final$apuestatriple==1, y_final$place_odds,0)
+y_final$ganancia_ganador_dob <- ifelse(y_final$won==1 & y_final$apuestadoble==1, y_final$win_odds,0)
+y_final$ganancia_podio_dob <- ifelse(y_final$is_top3==1 & y_final$apuestadoble==1, y_final$place_odds,0)
+y_final$ganancia_ganador_simple <- ifelse(y_final$won==1 & y_final$apuestasimple==1, y_final$win_odds,0)
+y_final$ganancia_podio_simple <- ifelse(y_final$is_top3==1 & y_final$apuestasimple==1, y_final$place_odds,0)
+
+y_final$ganancia_total <- y_final$ganancia_ganador_tri + y_final$ganancia_podio_tri+y_final$ganancia_ganador_dob+y_final$ganancia_podio_dob+y_final$ganancia_ganador_simple+y_final$ganancia_podio_simple
+
+#Obtenemos el retorno por dolar
+retorno_por_dolar <- (sum(y_final$ganancia_total)/(sum(y_final$apuestasimple)+sum(y_final$apuestadoble)+sum(y_final$ganancia_podio_tri))-1)*100
+print(paste("Por cada dolar invertido, obtengo un retorno del:", round(retorno_por_dolar, 3),"%"))
+      
 
 
