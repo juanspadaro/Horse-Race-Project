@@ -482,10 +482,11 @@ prop.table(table(test_set$is_trainer_xp))
 
 
 #borramos horseid, trainerid y jokey id de los 3 datasets
+#tampoco usamos is_horse_xp porque terminaba sirviendo poco en test.
 
-train_set <- train_set %>% select(-trainer_id,-jockey_id,-horse_id)
-val_set <- val_set %>% select(-trainer_id,-jockey_id,-horse_id)
-test_set <- test_set %>% select(-trainer_id,-jockey_id,-horse_id)
+train_set <- train_set %>% select(-is_horse_xp,-trainer_id,-jockey_id,-horse_id)
+val_set <- val_set %>% select(-is_horse_xp,-trainer_id,-jockey_id,-horse_id)
+test_set <- test_set %>% select(-is_horse_xp,-trainer_id,-jockey_id,-horse_id)
 
 #3)Seleccion de modelos----------------------------
 
@@ -903,8 +904,8 @@ roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 #limpiamos
 
-rm(train_set_log, val_set_log, test_set_log, train_set_log_new,logit_reg)
-
+rm(datos, datos_test, parametros, pca, pca_test, pca_val, train_set_log, val_set_log, test_set_log, train_set_log_new,logit_reg)
+rm(X, X_test, X_val)
 #----------------------------------------------------#
 
 #6) Random forest ------
@@ -918,7 +919,7 @@ grid <- data.frame(mtry = seq(6,10, 2))
 train_set = na.omit(train_set)
 sum(is.na(train_set))
 
-
+gc()
 rf <- train(won ~ .,
             data = train_set %>% mutate(won = ifelse(won == 0, "No", "Yes")),
             method = "rf",
@@ -926,7 +927,7 @@ rf <- train(won ~ .,
             tuneGrid = grid,
             metric = "ROC")
 
-saveRDS(rf,"C:/AAMIM/Machine learning/TP FINAL/rf.RDS")
+#saveRDS(rf,"C:/AAMIM/Machine learning/TP FINAL/rf.RDS")
 
 #rf <- readRDS("rf.RDS")
 
