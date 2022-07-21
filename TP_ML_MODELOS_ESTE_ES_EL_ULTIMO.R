@@ -496,9 +496,9 @@ prop.table(table(test_set$is_trainer_xp))
 # Borramos horse_id, trainer_id y jokey_id de los 3 datasets ya que no vamos a
 # darle otra utilidad
 
-train_set <- train_set %>% select(-trainer_id,-jockey_id,-horse_id)
-val_set <- val_set %>% select(-trainer_id,-jockey_id,-horse_id)
-test_set <- test_set %>% select(-trainer_id,-jockey_id,-horse_id)
+train_set <- train_set %>% select(-is_horse_xp,-trainer_id,-jockey_id,-horse_id)
+val_set <- val_set %>% select(-is_horse_xp,-trainer_id,-jockey_id,-horse_id)
+test_set <- test_set %>% select(-is_horse_xp,-trainer_id,-jockey_id,-horse_id)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Fin de Feature engineering.
 
