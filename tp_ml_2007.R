@@ -184,7 +184,7 @@ for(i in race_id){
 head(raceruns, 2)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Agrupamos algunas variables: 3 niveles según geografía y 3 según horse_ratings
+# Agrupamos algunas variables: 3 niveles segï¿½n geografï¿½a y 3 segï¿½n horse_ratings
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # Agrupamos la variable horse_country
@@ -193,7 +193,7 @@ table(raceruns$horse_country); prop.table(table(raceruns$horse_country))
 raceruns <- raceruns%>%
   mutate(horse_geography = case_when(horse_country == "AUS" |
                                        horse_country == "NZ" |
-                                       horse_country == "JPN" ~'Asia y Oceanía',
+                                       horse_country == "JPN" ~'Asia y Oceanï¿½a',
                                      horse_country == "FR" |
                                        horse_country == "GB" |
                                        horse_country == "GER"|
@@ -203,9 +203,9 @@ raceruns <- raceruns%>%
                                        horse_country == "ITY" |
                                        horse_country == "SAF" ~'Europa',
                                      horse_country == "USA" |
-                                     horse_country == "CAN" |
+                                       horse_country == "CAN" |
                                        horse_country == "" |
-                                     horse_country == "BRZ" |
+                                       horse_country == "BRZ" |
                                        horse_country == "ZIM" |
                                        horse_country == "ARG" ~'America y otros'))
 
@@ -313,7 +313,7 @@ test_set <- raceruns %>% filter(train_val_test== "test") %>% select(-train_val_t
 
 #imputamos la media a prize
 
-train_set<- train_set %>% filter(train_val_test=="train") %>% mutate(prize = impute_mean(prize))
+train_set<- train_set  %>% mutate(prize = impute_mean(prize))
 
 
 # ~~ 2.4) Tratamiento de clases desbalanceadas ####
@@ -335,9 +335,9 @@ length(unique(train_set$jockey_id)) #123 jockeys
 length(unique(train_set$trainer_id)) # 110 trainer
 
 
-horse_id <- unique(train_set$horse_id) # id único de cada caballo
-jockey_id <- unique(train_set$jockey_id) # id único de cada jockey
-trainer_id <- unique(train_set$trainer_id) # id único de cada trainer
+horse_id <- unique(train_set$horse_id) # id ï¿½nico de cada caballo
+jockey_id <- unique(train_set$jockey_id) # id ï¿½nico de cada jockey
+trainer_id <- unique(train_set$trainer_id) # id ï¿½nico de cada trainer
 
 
 train_set$is_horse_xp <- rep(NA,dim(train_set)[1]) # si el caballo tiene experiencia o no 
@@ -371,18 +371,126 @@ for(i in trainer_id){
 table(train_set$is_trainer_xp); prop.table(table(train_set$is_trainer_xp))
 
 
+##Creamos estos features para validacion (usando data de train)
+
+horse_id_v <- unique(val_set$horse_id) # id ï¿½nico de cada caballo
+jockey_id_v <- unique(val_set$jockey_id) # id ï¿½nico de cada jockey
+trainer_id_v <- unique(val_set$trainer_id) # id ï¿½nico de cada trainer
+
+val_set$is_horse_xp <- rep(NA,dim(val_set)[1]) # si el caballo tiene experiencia o no 
+val_set$is_jockey_xp <- rep(NA,dim(val_set)[1]) # si el jockey tiene experiencia o no
+val_set$is_trainer_xp <- rep(NA,dim(val_set)[1]) # si el trainer tiene experiencia o no
+
+
+
+for (i in horse_id_v){
+  sel = which(val_set$horse_id == i)
+  if (i %in% train_set$horse_id){
+        x <- which(train_set$horse_id == i)
+      x <- x[1]
+      val_set$is_horse_xp[sel] <- train_set[x,29]
+  }
+  else {
+    val_set$is_horse_xp[sel] <- 0
+  }
+}
+
+for (i in jockey_id_v){
+  sel = which(val_set$jockey_id == i)
+  if (i %in% train_set$jockey_id){
+    x <- which(train_set$jockey_id == i)
+    x <- x[1]
+    val_set$is_jockey_xp[sel] <- train_set[x,30]
+  }
+  else {
+    val_set$is_jockey_xp[sel] <- 0
+  }
+}
+
+for (i in trainer_id_v){
+  sel = which(val_set$trainer_id == i)
+  if (i %in% train_set$trainer_id){
+    x <- which(train_set$trainer_id == i)
+    x <- x[1]
+    val_set$is_trainer_xp[sel] <- train_set[x,31]
+  }
+  else {
+    val_set$is_trainer_xp[sel] <- 0
+  }
+}
+
+##Creamos estos features para test (usando data de train)
+
+horse_id_t <- unique(test_set$horse_id) # id ï¿½nico de cada caballo
+jockey_id_t <- unique(test_set$jockey_id) # id ï¿½nico de cada jockey
+trainer_id_t <- unique(test_set$trainer_id) # id ï¿½nico de cada trainer
+
+test_set$is_horse_xp <- rep(NA,dim(test_set)[1]) # si el caballo tiene experiencia o no 
+test_set$is_jockey_xp <- rep(NA,dim(test_set)[1]) # si el jockey tiene experiencia o no
+test_set$is_trainer_xp <- rep(NA,dim(test_set)[1]) # si el trainer tiene experiencia o no
+
+
+
+for (i in horse_id_t){
+  sel = which(test_set$horse_id == i)
+  if (i %in% train_set$horse_id){
+    x <- which(train_set$horse_id == i)
+    x <- x[1]
+    test_set$is_horse_xp[sel] <- train_set[x,29]
+  }
+  else {
+    test_set$is_horse_xp[sel] <- 0
+  }
+}
+
+for (i in jockey_id_t){
+  sel = which(test_set$jockey_id == i)
+  if (i %in% train_set$jockey_id){
+    x <- which(train_set$jockey_id == i)
+    x <- x[1]
+    test_set$is_jockey_xp[sel] <- train_set[x,30]
+  }
+  else {
+    test_set$is_jockey_xp[sel] <- 0
+  }
+}
+
+for (i in trainer_id_t){
+  sel = which(test_set$trainer_id == i)
+  if (i %in% train_set$trainer_id){
+    x <- which(train_set$trainer_id == i)
+    x <- x[1]
+    test_set$is_trainer_xp[sel] <- train_set[x,31]
+  }
+  else {
+    test_set$is_trainer_xp[sel] <- 0
+  }
+}
+
+prop.table(table(train_set$is_horse_xp))
+prop.table(table(val_set$is_horse_xp))
+prop.table(table(test_set$is_horse_xp))
+
+prop.table(table(train_set$is_jockey_xp))
+prop.table(table(val_set$is_jockey_xp))
+prop.table(table(test_set$is_jockey_xp))
+
+prop.table(table(train_set$is_trainer_xp))
+prop.table(table(val_set$is_trainer_xp))
+prop.table(table(test_set$is_trainer_xp))
+
+
+
 #borramos horseid, trainerid y jokey id de los 3 datasets
 
-train_set <- raceruns %>% select(-trainer_id,-jockey_id,-horse_id)
-val_set <- raceruns %>% select(-trainer_id,-jockey_id,-horse_id)
-test_set <- raceruns %>% select(-trainer_id,-jockey_id,-horse_id)
+train_set <- train_set %>% select(-trainer_id,-jockey_id,-horse_id)
+val_set <- val_set %>% select(-trainer_id,-jockey_id,-horse_id)
+test_set <- test_set %>% select(-trainer_id,-jockey_id,-horse_id)
 
 #3)Seleccion de modelos----------------------------
 
-X=train_set[,c(2,5,7,8,10,11,16,18,20)] ##ESTO HAY QUE REVISAR SOLO NUM
-
-y = train_set[,1]
-
+X=train_set[,c(2,4,6,7,9,10,15,17,19,22,23)] 
+y <- train_set[,1]
 pca <- prcomp(X, center = T, scale = T) # Escalamos las variables.
 
 ### VisualizaciÃ³n:
@@ -401,10 +509,10 @@ datos <- data.frame(y,pca$x)
 datos$y <-as.numeric(datos$y)
 head(datos,3)
 
-pcr <- lm(y~PC1+PC2+PC3+PC4+PC5+PC6, data = datos)
-summary(pcr) #R2adj = 0.03205 muy bajo
+pcr <- lm(y~PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8, data = datos)
+summary(pcr) #R2adj = 0.031 muy bajo
 
-X_val<-val_set[,c(2,5,7,8,10,11,16,18,20)]
+X_val<-val_set[,c(2,4,6,7,9,10,15,17,19,22,23)] 
 
 y_val <- val_set[,1]
 
@@ -413,7 +521,7 @@ pca_val <- prcomp(X_val, center = T, scale = T)
 datos_val <- data.frame(y_val,pca_val$x)
 datos_val$y_val <-as.numeric(datos_val$y_val)
 
-pcr_val <- lm(y~PC1+PC2+PC3+PC4+PC5+PC6, data = datos)
+pcr_val <- lm(y~PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8, data = datos)
 y_pred <- predict(pcr_val, newdata = datos_val)
 y_pred <- ifelse(y_pred>1.05,1,0) 
 
@@ -425,15 +533,12 @@ y_pred=as.vector(y_pred)
 
 conf_matrix <- table(y_val, y_pred)
 metricas(conf_matrix)
-accuracy <- sum(diag(prop.table(conf_matrix)))
-precision <- prop.table(conf_matrix, margin = 2)[2,2]
-recall <- prop.table(conf_matrix, margin = 1)[2,2]
 fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
 fb_score
 #~~3.1) Optimizamos cuantas variables usar----
 
 fb <- c()
-fb[1]  <- fb_score #con 6
+fb[1]  <- fb_score #con 8
 
 #probamos con 5
 
@@ -448,9 +553,6 @@ y_val=as.vector(y_val)
 y_pred=as.vector(y_pred)
 
 conf_matrix <- table(y_val, y_pred)
-accuracy <- sum(diag(prop.table(conf_matrix)))
-precision <- prop.table(conf_matrix, margin = 2)[2,2]
-recall <- prop.table(conf_matrix, margin = 1)[2,2]
 fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
 fb_score
 fb[2]  <- fb_score #con 5
@@ -468,17 +570,15 @@ y_val=as.vector(y_val)
 y_pred=as.vector(y_pred)
 
 conf_matrix <- table(y_val, y_pred)
-accuracy <- sum(diag(prop.table(conf_matrix)))
-precision <- prop.table(conf_matrix, margin = 2)[2,2]
-recall <- prop.table(conf_matrix, margin = 1)[2,2]
 fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
 fb_score
 fb[3]  <- fb_score #con 7
 which(max(fb)==fb)
 
-#el mejor es con 7 variables.
+#el mejor es con 8 variables.
 
-### AJUSTAMOS UMBRAL
+#~~3.2) Ajustamos umbral----
+
 
 umbral = c (1.02, 1.05, 1.1)
 
@@ -486,7 +586,7 @@ fb = c() #fb score para PCA
 
 
 for(i in 1:length(umbral)){ # recorre todos los valores del umbral
-  pcr_val <- lm(y~PC1+PC2+PC3+PC4+PC5+PC6+PC7, data = datos)
+  pcr_val <- lm(y~PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8, data = datos)
   y_pred <- predict(pcr_val, newdata = datos_val)
   y_pred <- ifelse(y_pred>umbral[i],1,0) 
   
@@ -508,14 +608,14 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
 max <-which.max(fb)
 max #UMBRAL 2
 
-#~~3.2) Reentrenamos modelo ------
+#~~3.3) Reentrenamos modelo ------
 #Reentrenamos modelo con el umbral correcto: 
 #sobre los datos de test
 
 train_set_new <- rbind(train_set,val_set)
 
-X<-train_set_new[,c(2,5,7,8,10,11,16,18,20)]
-X_test <- test_set[,c(2,5,7,8,10,11,16,18,20)]
+X<-train_set_new[,c(2,4,6,7,9,10,15,17,19,22,23)] 
+X_test <- test_set[,c(2,4,6,7,9,10,15,17,19,22,23)] 
 y <- train_set_new[,1]
 y_test <- test_set[,1]
 
@@ -529,7 +629,7 @@ datos_test$y_test <-as.numeric(datos_test$y_test)
 
 
 
-pcr <- lm(y~PC1+PC2+PC3+PC4+PC5+PC6+PC7, data = datos)
+pcr <- lm(y~PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8, data = datos)
 y_pred <- predict(pcr, newdata = datos_test)
 y_pred <- ifelse(y_pred>umbral[max],1,0) 
 y_test <- test_set$won
@@ -574,13 +674,21 @@ rpart.plot(tree)
 
 # Matriz de confusiÃƒÂ³n y accuracy
 y_pred <- predict(tree, val_set %>% select(-won))[,2]
+y_pred = round(y_pred,0)
 y_val <- val_set$won
-conf_matrix <- table(y_val, y_pred = round(y_pred,0))
+conf_matrix <- table(y_val, y_pred)
 metricas(conf_matrix)
+y_val <- as.numeric(y_val)
+y_val <- as.vector(y_val)
+y_pred <-as.vector(y_pred)
+
+fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
+print(paste("Fb score:", round(fb_score, 3)))
 
 # ÃƒÂrea bajo la curva de ROC
 roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
+#~~4.1) Ajustamos hiperparametros ------
 valores.minsplit = c(100,500)      # valores de "m"
 valores.minbucket = c(20,100)
 valores.maxdepth = c(5,20)
@@ -589,7 +697,6 @@ valores.cp = c (0.001, 0.0001) #complejidad arbol
 parametros = expand.grid(valores.minsplit = valores.minsplit,valores.minbucket = valores.minbucket,valores.maxdepth=valores.maxdepth,valores.cp=valores.cp ) 
 head(parametros,3) # 
 
-#~~4.1) Ajustamos hiperparametros ------
 
 fb = c() #fb score para logit
 set.seed(1)
@@ -616,9 +723,6 @@ for(i in 1:dim(parametros)[1]){ # i recorre la grilla de parÃƒÂ¡metros.
   y_pred = round(y_pred,0)
   y_pred=as.vector(y_pred)
   conf_matrix <- table(y_val, y_pred)
-  accuracy <- sum(diag(prop.table(conf_matrix)))
-  precision <- prop.table(conf_matrix, margin = 2)[2,2]
-  recall <- prop.table(conf_matrix, margin = 1)[2,2]
   fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
   fb[i]  <- fb_score
   print(i)
@@ -627,7 +731,51 @@ for(i in 1:dim(parametros)[1]){ # i recorre la grilla de parÃƒÂ¡metros.
 # print(fb)
 which(max(fb)==fb)
 
-#~~4.2) Reentrenamos modelo ------
+
+#~~4.2) Ajustamos umbral----
+
+#entrenamos arbol con hiperparametros 
+tree <- rpart(as.factor(won) ~ .,
+              
+              method="class",
+              
+              data=train_set,
+              
+              control=rpart.control(minsplit=100,
+                                    
+                                    minbucket =20,
+                                    
+                                    maxdepth = 20,
+                                    
+                                    xval=5 ,
+                                    
+                                    cp=0.0001))
+
+
+
+umbral = c (0.2,0.3,0.4, 0.45, 0.5,0.55)
+
+fb = c() #fb score para PCA
+
+
+for(i in 1:length(umbral)){ # recorre todos los valores del umbral
+  y_pred <- predict(tree, val_set %>% select(-won))[,2]
+  y_val <- val_set$won
+  y_val = as.numeric(y_val)
+  y_val=as.vector(y_val)
+  y_pred <- ifelse(y_pred>umbral[i],1,0)
+  y_pred=as.vector(y_pred)
+  conf_matrix <- table(y_val, y_pred)
+  fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
+  fb[i]  <- fb_score
+  print(i)
+}
+
+# print(fb)
+max <-which.max(fb)
+max #UMBRAL 1
+
+#~~4.3) Reentrenamos modelo ------
 #Reentrenamos con los mejores hiperparametros 
 #en el set de validacion
 
@@ -656,11 +804,12 @@ rpart.plot(tree)
 # Matriz de confusiÃƒÂ³n y accuracy
 y_pred <- predict(tree, test_set %>% select(-won))[,2]
 y_test <- test_set$won
-conf_matrix <- table(y_test, y_pred = round(y_pred,0))
+y_pred <- ifelse(y_pred>umbral[max],1,0)
+conf_matrix <- table(y_test, y_pred)
 metricas(conf_matrix)
 y_test <- as.numeric(y_test)
 y_test <- as.vector(y_test)
-y_pred = round(y_pred,0)
+
 y_pred=as.vector(y_pred)
 fb_score <- fbeta_score(y_test,y_pred, beta=0.05)
 print(paste("Fb score:", round(fb_score, 3)))
@@ -979,5 +1128,4 @@ print(paste("Fb score:", round(fb_score, 3)))
 
 # Ãrea bajo la curva de ROC
 roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
-
 
