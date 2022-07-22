@@ -1065,9 +1065,9 @@ rf <- train(won ~ .,
             metric = "ROC")
 
 #saveRDS(rf,"C:/AAMIM/Machine learning/TP FINAL/rf.RDS")
-
-rf <- readRDS("rf.RDS")
-
+#saveRDS(rf,'C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/rf.RDS')
+#rf <- readRDS("rf.RDS")
+rf <- readRDS('C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/rf.RDS')
 
 # Armo primer modelo RF
 y_pred <- predict(rf, val_set %>% select(-won), type = "prob")[, 2]
@@ -1129,8 +1129,10 @@ set.seed(1)
 #              metric = "ROC")
 
 #saveRDS(rf2,"C:/AAMIM/Machine learning/TP FINAL/rf2.RDS")
-
+#saveRDS(rf2,'C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/rf2.RDS')
 # rf2 <- readRDS("rf2.RDS")
+rf2 <- readRDS('C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/rf2.RDS')
+
 
 y_pred <- predict(rf2, test_set %>% select(-won), type = "prob")[, 2]
 
@@ -1190,8 +1192,11 @@ set.seed(1)
 #              metric = "ROC")
 
 #saveRDS(xgb, "C:/AAMIM/Machine learning/TP FINAL/xgb.RDS")
-xgb <- readRDS("C:/AAMIM/Machine learning/TP FINAL/xgb.RDS")
-
+#saveRDS(xgb,'C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/xgb.RDS')
+#xgb <- readRDS("C:/AAMIM/Machine learning/TP FINAL/xgb.RDS")
+xgb <- readRDS('C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/xgb.RDS')
+       
+       
 #Entrenamos primer modelo
 y_pred <- predict(xgb, val_set %>% select(-won), type = "prob")[, 2]
 
@@ -1255,7 +1260,9 @@ set.seed(1)
 #              metric = "ROC")
 
 #saveRDS(xgb2, "C:/AAMIM/Machine learning/TP FINAL/xgb2.RDS")
-xgb2 <- readRDS("C:/AAMIM/Machine learning/TP FINAL/xgb2.RDS")
+#saveRDS(xgb2,'C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/xgb2.RDS')
+#xgb2 <- readRDS("C:/AAMIM/Machine learning/TP FINAL/xgb2.RDS")
+xgb2 <- readRDS('C:/Others/Master in Management + Analytics/MATERIAS/Módulo 02/Machine Learning/TP/Horse race data TP2022/xgb2.RDS')
 
 
 
