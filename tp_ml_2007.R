@@ -1284,7 +1284,7 @@ roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 
 
-#8) Etapa prescriptiva ----
+#9) Etapa prescriptiva ----
 
 #Agregamos una col mas donde vemos si es top 3 o no
 #es top 3? 1 si es top3 o 0 si no
