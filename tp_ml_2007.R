@@ -116,44 +116,7 @@ y_final <- raceruns%>% filter(train_val_test =="test")
 y_final_val <- raceruns%>% filter(train_val_test =="valid")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Fin del punto 2.1)
 
-# ~~ 2.2) Tratamiento de outliers ####
 
-#Weight
-par(mfrow=c(1,2))
-weight_boxplot <- boxplot(raceruns$declared_weight, main = "Declared Weight") 
-boxplot(raceruns$actual_weight, main = "Actual Weigth")
-
-head(sort(raceruns$declared_weight))
-boxplot.stats(sort(raceruns$declared_weight))$out
-
-raceruns<-raceruns[!(raceruns$declared_weight %in% weight_boxplot$out),]
-rm(weight_boxplot)
-
-#Distance
-distance_boxplot <- boxplot(raceruns$distance, main = "Distance")
-max(raceruns$distance)
-boxplot.stats(sort(raceruns$distance))$out
-
-raceruns<-raceruns[!(raceruns$distance %in% distance_boxplot$out),]
-rm(distance_boxplot)
-
-#Prize
-table(raceruns$prize)
-prize_boxplot <- boxplot(raceruns$prize, main= "Prize")
-boxplot.stats(sort(raceruns$prize))$out
-
-raceruns<-raceruns[!(raceruns$prize %in% prize_boxplot$out),]
-rm(prize_boxplot)
-
-#Otras
-boxplot.stats(sort(raceruns$age))$out
-boxplot.stats(sort(raceruns$rating))$out
-
-# No se encontraron outliers adicionales
-
-dev.off() # Para cerrar la ventana de imagenes 
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Fin del punto 2.2)
 
 # ~~ 2.3) Feature engineering ####
 
@@ -336,6 +299,45 @@ test_set <- raceruns %>% filter(train_val_test== "test") %>% select(-train_val_t
 
 train_set <- train_set  %>% mutate(prize = impute_mean(prize))
 
+#) Tratamiento de outliers 
+
+#Weight
+par(mfrow=c(1,2))
+weight_boxplot <- boxplot(train_set$declared_weight, main = "Declared Weight") 
+boxplot(train_set$actual_weight, main = "Actual Weigth")
+
+head(sort(train_set$declared_weight))
+boxplot.stats(sort(train_set$declared_weight))$out
+
+raceruns<-train_set[!(train_set$declared_weight %in% weight_boxplot$out),]
+rm(weight_boxplot)
+
+#Distance
+distance_boxplot <- boxplot(train_set$distance, main = "Distance")
+max(train_set$distance)
+boxplot.stats(sort(train_set$distance))$out
+
+raceruns<-train_set[!(train_set$distance %in% distance_boxplot$out),]
+rm(distance_boxplot)
+
+#Prize
+table(train_set$prize)
+prize_boxplot <- boxplot(train_set$prize, main= "Prize")
+boxplot.stats(sort(train_set$prize))$out
+
+raceruns<-train_set[!(train_set$prize %in% prize_boxplot$out),]
+rm(prize_boxplot)
+
+#Otras
+boxplot.stats(sort(train_set$age))$out
+boxplot.stats(sort(train_set$rating))$out
+
+# No se encontraron outliers adicionales
+
+dev.off() # Para cerrar la ventana de imagenes        
+       
+       
+       
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Creamos los últimos features luego de separar el dataset para evitar cometer
 # data leakage 
@@ -508,6 +510,14 @@ val_set <- val_set %>% select(-is_horse_xp,-trainer_id,-jockey_id,-horse_id)
 test_set <- test_set %>% select(-is_horse_xp,-trainer_id,-jockey_id,-horse_id)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Fin de Feature engineering.
 
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Fin del punto 2.2)      
+       
+       
+       
+       
+       
 # ~~ 2.4) Tratamiento de clases desbalanceadas ####
 table(raceruns$won) #ver justificaciones en el informe .pdf
 
