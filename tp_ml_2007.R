@@ -913,7 +913,131 @@ rm(train_set_log, val_set_log, test_set_log, train_set_log_new,logit_reg)
 
 # 6) Regresion LASSO ####   
        
-       
+# 6) Regresion LASSO #### 
+
+#Pasamos a matriz esparsa
+X <- model.matrix( ~ .-1, train_set[ , c(-1,-3,-16,-25)]) 
+dim(X) 
+Y = as.matrix(train_set[, 1])
+
+set.seed(1)
+grid.l = c(0.00001,0.01,0.05,1,5,10) 
+cv.out = cv.glmnet(X, 
+                   Y, 
+                   family = 'binomial',     
+                   weights = NULL,          
+                   type.measure="deviance", 
+                   lambda = grid.l, 
+                   alpha = 1,               # Lasso
+                   nfolds = 5)
+x11()
+plot (cv.out) 
+bestlam = cv.out$lambda.1se
+bestlam 
+
+# Fiteamos el modelo seleccionado con todos los datos de train:
+addtiv.logit.lasso = glmnet(x = X , y = Y,
+                            family = 'binomial', 
+                            alpha = 1,  
+                            lambda = bestlam) #lambda*
+
+X_val <- model.matrix( ~ .-1, val_set[ , c(-1,-3,-16,-25)]) 
+dim(X) 
+Y_val = as.matrix(val_set[, 1])
+
+#Entrenamos modelo
+y_pred = predict(addtiv.logit.lasso, s = bestlam , 
+               newx = X_val, type = 'response') 
+
+
+#metricas
+y_val <- val_set$won
+y_pred <- ifelse(y_pred>0.25,1,0)
+conf_matrix <- table(y_val, y_pred)
+metricas(conf_matrix)
+y_val <- as.numeric(y_val)
+y_val <- as.vector(y_val)
+y_pred=as.vector(y_pred)
+fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
+print(paste("Fb score:", round(fb_score, 3)))
+
+#~~6.1) Ajustamos umbral ------
+
+### AJUSTAMOS UMBRAL
+
+umbral = c (0.1, 0.14,0.15,0.16, 0.2,0.3,0.4)
+
+fb = c() #fb score 
+
+
+for(i in 1:length(umbral)){ # recorre todos los valores del umbral
+  y_pred = predict(addtiv.logit.lasso, s = bestlam , 
+                   newx = X_val, type = 'response') 
+  y_pred <- ifelse(y_pred>umbral[i],1,0)
+  
+  y_val <- val_set$won
+  conf_matrix <- table(y_val, y_pred)
+  y_val <- as.numeric(y_val)
+  y_val<-as.vector(y_val)
+  y_pred <- as.vector(y_pred)
+  
+  accuracy <- sum(diag(prop.table(conf_matrix)))
+  precision <- prop.table(conf_matrix, margin = 2)[2,2]
+  recall <- prop.table(conf_matrix, margin = 1)[2,2]
+  fb_score <- fbeta_score(y_val,y_pred, beta=0.05)
+  fb[i]  <- fb_score
+  print(i)
+}
+
+# print(fb)
+max <-which.max(fb)
+max
+
+#~~6.2) Reentrenamos modelo ------
+#Reentrenamos modelo con el umbral correcto: 
+#sobre los datos de test
+
+train_set_new <- rbind(train_set,val_set)
+train_set_new = na.omit(train_set_new)
+sum(is.na(train_set_new))
+
+set.seed(1)
+
+X <- model.matrix( ~ .-1, train_set_new[ , c(-1,-3,-16,-25)]) 
+dim(X) 
+Y = as.matrix(train_set_new[, 1])
+
+
+#  Fiteamos el modelo seleccionado con todos los datos de train+valid:
+addtiv.logit.lasso = glmnet(x = X , y = Y,
+                            family = 'binomial', 
+                            alpha = 1,  
+                            lambda = bestlam) #lambda*
+
+X_test <- model.matrix( ~ .-1, test_set[ , c(-1,-3,-16,-25)]) 
+dim(X) 
+Y_test = as.matrix(test_set[, 1])
+
+#Entrenamos modelo
+y_pred = predict(addtiv.logit.lasso, s = bestlam , 
+                 newx = X_test, type = 'response') 
+
+
+
+#Matriz de confusion
+y_pred <- ifelse(y_pred>umbral[max],1,0)
+y_test <- test_set$won
+conf_matrix <- table(y_test, y_pred)
+metricas(conf_matrix)
+y_test <- as.numeric(y_test)
+y_test <- as.vector(y_test)
+y_pred=as.vector(y_pred)
+fb_score <- fbeta_score(y_test,y_pred, beta=0.05)
+print(paste("Fb score:", round(fb_score, 3)))
+
+# Ãrea bajo la curva de ROC
+roc(y_test ~ y_pred, plot = TRUE, print.auc = TRUE)
+
        
        
        
