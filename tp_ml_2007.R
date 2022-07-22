@@ -923,7 +923,7 @@ rm(train_set_log, val_set_log, test_set_log, train_set_log_new,logit_reg)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ FIN Regresión logística.
 
-# 6) Regresion LASSO #### 
+# 6) Regresión logística + LASSO #### 
 
 #Pasamos a matriz esparsa
 X <- model.matrix( ~ .-1, train_set[ , c(-1,-3,-16,-25)]) 
