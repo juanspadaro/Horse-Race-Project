@@ -1310,26 +1310,8 @@ y_final$ganancia_total <- y_final$ganancia_ganador+y_final$ganancia_podio
 retorno_por_dolar <- (sum(y_final$ganancia_total)/sum(y_final$apuesta)-1)*100
 print(paste("Por cada dolar invertido, obtengo un retorno del:", round(retorno_por_dolar, 3),"%"))
 
-#~~9.2) Segunda estrategia bajando  el umbral (lo bajamos mucho)----
 
-#Entrenamos modelo
-y_pred <- predict(xgb2, test_set %>% select(-won), type = "prob")[, 2]
-
-
-y_pred <- ifelse(y_pred>0.05,1,0)
-y_test <- test_set$won
-y_final$apuesta <- y_pred
-
-y_final$ganancia_ganador <- ifelse(y_final$won==1 & y_final$apuesta==1, y_final$win_odds,0)
-y_final$ganancia_podio <- ifelse(y_final$is_top3==1 & y_final$apuesta==1, y_final$place_odds,0)
-y_final$ganancia_total <- y_final$ganancia_ganador+y_final$ganancia_podio
-
-#Obtenemos retorno por dolar
-retorno_por_dolar <- (sum(y_final$ganancia_total)/sum(y_final$apuesta)-1)*100
-print(paste("Por cada dolar invertido, obtengo un retorno del:", round(retorno_por_dolar, 3),"%"))
-
-
-#~~9.3) Maximizamos umbral  ----
+#~~9.2) Maximizamos umbral  ----
 #siguiendo la estrategia de maximo rendimiento por dolar
 #en el set de validacion y luego pasamos a test
 
@@ -1363,7 +1345,7 @@ for (i in 1:length(umbral)){
 max <-which.max(beneficio)
 umbral[max] #0.6
 
-#~~9.4) Apuesta final sobre test con umbral optimizado  ----
+#~~9.3) Apuesta final sobre test con umbral optimizado  ----
 
 #Entrenamos modelo
 y_pred <- predict(xgb2, test_set %>% select(-won), type = "prob")[, 2]
@@ -1384,7 +1366,7 @@ retorno_por_dolar <- (sum(y_final$ganancia_total)/sum(y_final$apuesta)-1)*100
 print(paste("Por cada dolar invertido, obtengo un retorno del:", round(retorno_por_dolar, 3),"%"))
 
 
-#~~9.5) Apostando distintos montos dependiendo de la probabilidad  ----
+#~~9.4) Apostando distintos montos dependiendo de la probabilidad  ----
 
 y_pred <- predict(xgb2, test_set %>% select(-won), type = "prob")[, 2]
 
@@ -1401,7 +1383,7 @@ y_final$ganancia_total <- y_final$ganancia_ganador_dob+y_final$ganancia_podio_do
 retorno_por_dolar <- (sum(y_final$ganancia_total)/(sum(y_final$apuestasimple)+sum(y_final$apuestadoble))-1)*100
 print(paste("Por cada dolar invertido, obtengo un retorno del:", round(retorno_por_dolar, 3),"%"))
 
-#~~9.6) Apostando distintos montos dependiendo de la probabilidad  ----
+#~~9.5) Apostando distintos montos dependiendo de la probabilidad  ----
 
 y_pred <- predict(xgb2, test_set %>% select(-won), type = "prob")[, 2]
 
