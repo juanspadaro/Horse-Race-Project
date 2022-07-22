@@ -965,7 +965,7 @@ print(paste("Fb score:", round(fb_score, 3)))
 
 ### AJUSTAMOS UMBRAL
 
-umbral = c (0.1, 0.14,0.15,0.16, 0.2,0.3,0.4)
+umbral = c (0.1, 0.14,0.15,0.16, 0.2,0.22,0.25,0.26,0.28,0.3,0.4,0.5)
 
 fb = c() #fb score 
 
