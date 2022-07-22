@@ -911,7 +911,17 @@ rm(train_set_log, val_set_log, test_set_log, train_set_log_new,logit_reg)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ FIN Regresión logística.
 
-# 6) Random Forest #### 
+# 6) Regresion LASSO ####   
+       
+       
+       
+       
+       
+       
+       
+       
+       
+# 7) Random Forest #### 
 
 set.seed(1)
 oob <- trainControl(method = "oob",
@@ -947,7 +957,7 @@ metricas(conf_matrix)
 # Área bajo la curva de ROC
 roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
-#~~6.1) Ajustamos umbral ------
+#~~7.1) Ajustamos umbral ------
 
 ### AJUSTAMOS UMBRAL
 
@@ -978,7 +988,7 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
 max <-which.max(fb)
 max
 
-#~~6.2) Reentrenamos modelo ------
+#~~7.2) Reentrenamos modelo ------
 #Reentrenamos modelo con el umbral correcto: 
 #sobre los datos de test
 
@@ -1022,7 +1032,7 @@ dev.off() # cierra ventana
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ FIN Random Forest.
 
-# 7) XGBoost #### 
+# 8) XGBoost #### 
 
 cv <- trainControl(method = "cv",
                    number = 5,
@@ -1078,7 +1088,7 @@ print(paste("Fb score:", round(fb_score, 3)))
 roc(y_val ~ y_pred, plot = TRUE, print.auc = TRUE)
 
 
-#~~7.1) Ajustamos umbral ------
+#~~8.1) Ajustamos umbral ------
 
 umbral = c (0.05,0.1, 0.2,0.22,0.23,0.26,0.27, 0.28,0.29,0.3,0.33,0.4,0.5,0.6)
 
@@ -1104,7 +1114,7 @@ for(i in 1:length(umbral)){ # recorre todos los valores del umbral
 max <-which.max(fb)
 umbral[max]
 
-#~~7.2) Reentrenamos modelo ------
+#~~8.2) Reentrenamos modelo ------
 #Reentrenamos modelo con el umbral correcto: 
 #sobre los datos de test
 
@@ -1151,7 +1161,7 @@ y_final$is_top3 <- ifelse(
   y_final$result == 1 | y_final$result == 2 | y_final$result == 3, 1, 0)
 table(raceruns$is_top3); prop.table(table(raceruns$is_top3)) 
 
-#~~8.1) Primera estrategia usando el mejor modelo (apostamos pocas veces)----
+#~~9.1) Primera estrategia usando el mejor modelo (apostamos pocas veces)----
 
 #Entrenamos modelo
 y_pred <- predict(xgb2, test_set %>% select(-won), type = "prob")[, 2]
@@ -1169,7 +1179,7 @@ y_final$ganancia_total <- y_final$ganancia_ganador+y_final$ganancia_podio
 retorno_por_dolar <- (sum(y_final$ganancia_total)/sum(y_final$apuesta)-1)*100
 print(paste("Por cada dolar invertido, obtengo un retorno del:", round(retorno_por_dolar, 3),"%"))
 
-#~~8.2) Segunda estrategia bajando  el umbral (lo bajamos mucho)----
+#~~9.2) Segunda estrategia bajando  el umbral (lo bajamos mucho)----
 
 #Entrenamos modelo
 y_pred <- predict(xgb2, test_set %>% select(-won), type = "prob")[, 2]
@@ -1188,7 +1198,7 @@ retorno_por_dolar <- (sum(y_final$ganancia_total)/sum(y_final$apuesta)-1)*100
 print(paste("Por cada dolar invertido, obtengo un retorno del:", round(retorno_por_dolar, 3),"%"))
 
 
-#~~8.3) Maximizamos umbral  ----
+#~~9.3) Maximizamos umbral  ----
 #siguiendo la estrategia de maximo rendimiento por dolar
 #en el set de validacion y luego pasamos a test
 
@@ -1222,7 +1232,7 @@ for (i in 1:length(umbral)){
 max <-which.max(beneficio)
 umbral[max] #0.6
 
-#~~8.4) Apuesta final sobre test con umbral optimizado  ----
+#~~9.4) Apuesta final sobre test con umbral optimizado  ----
 
 #Entrenamos modelo
 y_pred <- predict(xgb2, test_set %>% select(-won), type = "prob")[, 2]
@@ -1243,7 +1253,7 @@ retorno_por_dolar <- (sum(y_final$ganancia_total)/sum(y_final$apuesta)-1)*100
 print(paste("Por cada dolar invertido, obtengo un retorno del:", round(retorno_por_dolar, 3),"%"))
 
 
-#~~8.5) Apostando distintos montos dependiendo de la probabilidad  ----
+#~~9.5) Apostando distintos montos dependiendo de la probabilidad  ----
 
 y_pred <- predict(xgb2, test_set %>% select(-won), type = "prob")[, 2]
 
@@ -1260,7 +1270,7 @@ y_final$ganancia_total <- y_final$ganancia_ganador_dob+y_final$ganancia_podio_do
 retorno_por_dolar <- (sum(y_final$ganancia_total)/(sum(y_final$apuestasimple)+sum(y_final$apuestadoble))-1)*100
 print(paste("Por cada dolar invertido, obtengo un retorno del:", round(retorno_por_dolar, 3),"%"))
 
-#~~8.6) Apostando distintos montos dependiendo de la probabilidad  ----
+#~~9.6) Apostando distintos montos dependiendo de la probabilidad  ----
 
 y_pred <- predict(xgb2, test_set %>% select(-won), type = "prob")[, 2]
 
